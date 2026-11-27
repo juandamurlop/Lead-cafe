@@ -503,12 +503,12 @@ export function vistaMapa(b: Base): HTMLElement {
         const s = store.get();
         const n = nivelActual();
         const txt = n === 0
-          ? 'Los contornos regionales agrupan fincas del catálogo ficticio. Los centros se ubican de forma aproximada a partir de sus fincas asociadas.'
+          ? 'Los contornos regionales agrupan las fincas registradas. Los centros se ubican de forma aproximada a partir de sus fincas asociadas.'
           : n === 1
             ? `${s.zonaSel}: las líneas unen cada centro de acopio con los caficultores que le entregan.`
             : n === 2
               ? 'Las líneas conectan el centro aproximado con las fincas del mismo coopId.'
-              : 'Contorno del predio según el catálogo ficticio, con sus vértices, el centroide y las fotos georreferenciadas disponibles.';
+              : 'Contorno del predio registrado, con sus vértices, el centroide y las fotos georreferenciadas disponibles.';
         return nota(txt);
       }),
     ),

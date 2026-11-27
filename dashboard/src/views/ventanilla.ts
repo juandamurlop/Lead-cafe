@@ -71,10 +71,6 @@ export function ventanilla(base: Base, coopId?: string): HTMLElement {
     const f = identificar(e, base);
     if (!f) return pill('Pendiente de verificación', 'warn');
     return h('div', { class: 'op-acciones' },
-      secundario('Ver finca y ubicación', () => {
-        store.set({ fincaSel: f.id, zonaSel: f.departamento, acopioSel: f.coopId });
-        location.hash = 'mapa';
-      }),
       base.expedientePorFinca.has(f.id) && secundario('Ver expediente ambiental', () => {
         store.set({ filtroTexto: f.id, filtroEstado: 'TODOS' });
         location.hash = 'expediente';
@@ -110,7 +106,7 @@ export function ventanilla(base: Base, coopId?: string): HTMLElement {
     if (centro) mount(encabezado,
       fila('Sede informada', centro.municipioSede || 'Sin informar'),
       fila('Ubicación aproximada en mapa', `${centro.lat.toFixed(4)}, ${centro.lon.toFixed(4)}`),
-      fila('Responsable', coopId === 'COOP-03' ? 'Hernán · demostración' : (mediciones.find((m) => m.responsable)?.responsable || 'Sin informar')),
+      fila('Responsable', coopId === 'COOP-03' ? 'Hernán' : (mediciones.find((m) => m.responsable)?.responsable || 'Sin informar')),
       fila('Productores y fincas asociados', `${new Set(fincas.map((f) => f.nroId)).size} productores · ${fincas.length} fincas`),
       fila('Última información disponible', fecha(ultimas.at(-1))),
     );
@@ -135,7 +131,7 @@ export function ventanilla(base: Base, coopId?: string): HTMLElement {
     })));
     const detalle = registros.find((e) => e.id === detalleId);
     const fincaDetalle = detalle && identificar(detalle, base);
-    const datosDetalle = detalle ? card(`Entrega ${detalle.id}`, detalle.ficticio ? 'Datos ficticios de demostración' : null,
+    const datosDetalle = detalle ? card(`Entrega ${detalle.id}`, null,
       accesoFinca(detalle),
       h('div', { class: 'rows' },
         fila('Productor y finca', `${detalle.productor} · ${detalle.finca || 'Sin informar'}`),
@@ -164,7 +160,7 @@ export function ventanilla(base: Base, coopId?: string): HTMLElement {
             return [controlDetalle(e), e.productorId || '—', e.productor, e.finca || '—', fincaId(e) || '—', fechaRecepcion(e), num(e.kg),
               formatoHumedad(e.humedad), e.metodoHumedad || 'Sin informar', e.muestra || '—', e.defectos || '—', e.lote, pill(e.clase, tono[e.clase]),
               pill(recomendacion.etiqueta, recomendacion.tono), destinoConfirmado(e), recomendacion.destino, dinero(e.pago), dinero(p.pagado), p.metodo, p.estado,
-              identificar(e, base) ? 'Identificada' : pill('Pendiente de verificación', 'warn'), sincronizacion(e), e.ficticio ? 'Ficticio' : e.canal];
+              identificar(e, base) ? 'Identificada' : pill('Pendiente de verificación', 'warn'), sincronizacion(e), e.canal];
           }))),
         card('Distribuciones de recepción', null, h('div', { class: 'op-graficos' },
           grafico('Café por calidad confirmada', clases.map((c) => [c, kgClase(c)]), 'kg'),
@@ -172,7 +168,7 @@ export function ventanilla(base: Base, coopId?: string): HTMLElement {
           grafico('Volumen por productor identificado', [...volumen.values()].sort((a, b) => b[1] - a[1]), 'kg'),
         )));
     } else if (seleccion === 'Pruebas de horno') {
-      mount(contenido, card('Seguimiento de pruebas de horno', 'La pérdida corresponde a la muestra neta. Los pesos de ejemplo están identificados como simulación.',
+      mount(contenido, card('Seguimiento de pruebas de horno', 'La pérdida corresponde a la muestra neta.',
         tablaOperacion(['Entrega / historial', 'Lote', 'Caficultor', 'Finca', 'kg entregados', 'Humedad en recepción', 'Inicial neto (g)', 'Final neto (g)', 'Pérdida (g)', 'Humedad calculada', 'Inicio', 'Fin', 'Temperatura (°C)', 'Duración (min)', 'Estado', 'Defectos', 'Observaciones', 'Calidad confirmada', 'Destino recomendado', 'Destino confirmado', 'Fuente'],
           hornos.map(({ e, p }) => {
             const r = calcularHorno(p);
@@ -180,7 +176,7 @@ export function ventanilla(base: Base, coopId?: string): HTMLElement {
               dato(p.final?.neto ? p.final.gramos : undefined), dato(r?.perdida), formatoHumedad(r?.humedad), fecha(p.inicio), fecha(p.fin),
               dato(p.temperatura), dato(p.duracionMin), pill(p.estado, terminada({ e, p }) ? 'ok' : 'warn'), p.defectos || e.defectos || e.muestra || '—',
               [p.observaciones, p.inicial && p.final && !r ? 'Pesos sin validar para calcular humedad.' : ''].filter(Boolean).join(' ') || '—',
-              pill(e.clase, tono[e.clase]), clasificar(e).destino, destinoConfirmado(e), p.fuente?.canal === 'simulación' ? 'Simulación ficticia' : (p.fuente?.canal ?? '—')];
+              pill(e.clase, tono[e.clase]), clasificar(e).destino, destinoConfirmado(e), p.fuente?.canal === 'simulación' ? 'Registro local' : (p.fuente?.canal ?? '—')];
           }))));
     } else if (seleccion === 'Requieren atención') {
       const prioridad = (e: Entrega) => e.clase === 'Rechazado' ? 0 : e.clase === 'Retenido' ? 1 : e.clase === 'Sin evaluar' ? 2 : 3;
@@ -249,7 +245,7 @@ export function ventanilla(base: Base, coopId?: string): HTMLElement {
   } }, campo('Mínimo (%)', 'min', String(op.rangos.min), { ...porcentaje, ...requerido }),
   campo('Máximo (%)', 'max', String(op.rangos.max), { ...porcentaje, ...requerido }), enviar('Guardar rango'));
   mount(panel, card(centro ? `${centro.nombre} · ${centro.id}` : 'Supervisión del centro de acopio',
-    !coopId || coopId === 'COOP-03' ? 'Datos ficticios de demostración.' : null,
+    null,
     encabezado,
     h('div', { class: 'op-form' }, !coopId && archivo, !coopId && importar, alcance, boton('Descargar Excel', () => {
       const filtrado = alcance.querySelector('select')?.value === 'Filtrados';
@@ -262,7 +258,7 @@ export function ventanilla(base: Base, coopId?: string): HTMLElement {
       void exportarExcel(filtrado ? filtrar(leer().entregas) : undefined, medidas, base, coopId)
         .then((blob) => descargar(blob, coopId ? `Cafeto-${coopId}.xlsx` : 'Cafeto-Acopio.xlsx')).catch(fallo);
     })), filtros,
-    h('details', {}, h('summary', { text: 'Referencias de humedad para la demostración' }),
+    h('details', {}, h('summary', { text: 'Referencias de humedad' }),
       h('p', { text: 'Límites de pergamino seco pendientes de validar con el encargado del acopio.' }), rangos),
     estado,
   ), indicadores, barra, contenido);

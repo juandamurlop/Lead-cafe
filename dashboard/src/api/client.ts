@@ -206,3 +206,18 @@ export async function fetchSummary(): Promise<DashboardSummary | null> {
     return null;
   }
 }
+
+export async function verifyLotCoop(lotCode: string): Promise<boolean> {
+  try {
+    const res = await fetch(
+      apiUrl(`/api/lots/${encodeURIComponent(lotCode)}/verify`),
+      {
+        method: 'POST',
+        signal: AbortSignal.timeout(4000),
+      },
+    );
+    return res.ok;
+  } catch {
+    return false;
+  }
+}

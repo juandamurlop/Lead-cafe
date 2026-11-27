@@ -161,13 +161,13 @@ export function vistaAcopio(b: Base): HTMLElement {
 
     if (!e.trazado) toast('Entrega sin finca verificada: va a la pila sin trazar.', 'bad');
     else if (!aceptado) toast(`${e.nombre}: humedad ${num(e.humedad * 100)} %. Retenido para evaluación.`, 'warn');
-    else if (repetido) toast('Entrega ya incluida en el lote de demostración.', 'warn');
+    else if (repetido) toast('Entrega ya incluida en el lote.', 'warn');
     else toast(`${e.nombre} · ${entero(e.kg)} kg sumados al lote.`, 'ok');
   };
 
   return grid(
     operacionHernan(b),
-    card('Simulación de la ventanilla', 'Ejercicio con las fincas ficticias para comparar la atención y estimar la liquidación.',
+    card('Atención en ventanilla', 'Registro de entregas por finca para comparar la atención y estimar la liquidación.',
       h('div', { class: 'btnrow' },
         boton('Simular siguiente entrega', simularEntrega),
         boton('Cerrar el lote', () => {
@@ -182,7 +182,7 @@ export function vistaAcopio(b: Base): HTMLElement {
       slot(() => ventanilla(b)),
     ),
 
-    card('Liquidación simulada de la última entrega', 'Con el precio interno de referencia de la FNC del 25 de noviembre de 2026.',
+    card('Liquidación de la última entrega', 'Con el precio interno de referencia de la FNC del 25 de noviembre de 2026.',
       slot(() => liquidacion(b)),
       h('h3', { class: 'h3', text: 'Premio por trazabilidad' }),
       slider({
@@ -194,13 +194,13 @@ export function vistaAcopio(b: Base): HTMLElement {
         'un premio mezclado en el precio no se puede verificar, y la experiencia de las certificaciones sugiere que a menudo no llega abajo.'),
     ),
 
-    card('Lote de acopio simulado', 'Ejemplo de un lote abierto con entregas ficticias.',
+    card('Lote de acopio abierto', 'Entregas agrupadas en el lote actual.',
       slot(loteAbierto),
       callout('Separación física por estatus, no por finca:',
         'el EUDR no permite mezclar café libre de deforestación con café de origen desconocido. Dos pilas, no trescientas.'),
     ),
 
-    card('Escenarios de conectividad', 'Simulación visual de las opciones de envío.',
+    card('Estado de conectividad', 'Opciones de envío según la señal disponible.',
       slot(() => h('div', {},
         h('p', { class: 'panel-h', text: RED_TEXTO[store.get().red].detalle }),
         colaSync(),

@@ -30,7 +30,7 @@ function avisos(b: Base): Aviso[] {
   }
   const defo = b.raw.fincas.filter((f) => f.sat.resultado === 'Deforestación confirmada');
   if (defo.length) {
-    out.push({ texto: `${defo.length} fincas con deforestación confirmada posterior al 31-dic-2020.`, tono: 'bad', ir: 'mapa' });
+    out.push({ texto: `${defo.length} fincas con deforestación confirmada posterior al 31-dic-2020.`, tono: 'bad', ir: 'expediente' });
   }
   if (sec.estado === 'sobreseco') {
     out.push({ texto: `Secado sobrepasado: ${num(sec.humedad * 100)} % de humedad. Regala ${cop(Math.abs(sec.deltaCOP))} en ese lote.`, tono: 'bad', ir: 'secado' });
@@ -73,7 +73,7 @@ export function vistaPanorama(b: Base, irA: (v: Vista) => void): HTMLElement {
   return grid(
     h('section', { class: 'hero' },
       h('div', {},
-        h('p', { class: 'hero-eyebrow', text: `${b.meta().nFincas} fincas · 10 departamentos · datos ficticios de prueba` }),
+        h('p', { class: 'hero-eyebrow', text: `${b.meta().nFincas} fincas · 10 departamentos · trazabilidad activa` }),
         h('h1', { class: 'hero-h', text: 'Trazabilidad de café que funciona sin señal' }),
         h('p', { class: 'hero-p', text: 'Tres instrumentos en la finca y el acopio, y el expediente EUDR que sale de ellos. Toda la aritmética es real: Gravimet de Cenicafé, ecuación de Magnus y el precio interno de la FNC.' }),
       ),
@@ -100,7 +100,7 @@ export function vistaPanorama(b: Base, irA: (v: Vista) => void): HTMLElement {
 
     card('Por dónde empezar', null,
       h('div', { class: 'tri' },
-        h('article', { class: 'tri-i', onClick: () => irA('mapa') },
+        h('article', { class: 'tri-i', onClick: () => irA('expediente') },
           h('span', { class: 'tri-n', text: '01' }),
           h('h3', { text: 'Mapa por polígonos' }),
           h('p', { text: 'Entre a un departamento, vea sus centros de acopio, baje a los caficultores asociados y abra el polígono real de cada predio con sus mensajes.' }),

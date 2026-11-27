@@ -202,6 +202,51 @@ class PostgresStore:
             conn.execute(sql, (gfw_status, user_id))
             conn.commit()
 
+    def get_latest_farm_lots(self, user_id: Any) -> list[dict[str, Any]]:
+        """Return all lots on the user's most recent farm with farm and producer names."""
+        sql = """
+            SELECT
+                l.id,
+                l.lot_code,
+                l.lot_name,
+                l.quantity,
+                l.unit,
+                l.process,
+                l.gfw_status,
+                f.name AS farm_name,
+                u.name AS producer_name
+            FROM lots l
+            JOIN farms f ON f.id = l.farm_id
+            JOIN users u ON u.id = l.user_id
+            WHERE l.farm_id = (
+                SELECT id FROM farms WHERE user_id = %s ORDER BY created_at DESC LIMIT 1
+            )
+            ORDER BY l.created_at DESC
+        """
+        with self._connect() as conn:
+            return conn.execute(sql, (user_id,)).fetchall()
+
+    def set_lot_evidence_url(self, lot_id: Any, evidence_blob_url: str) -> None:
+        """Persist the Azure Blob Storage evidence URL for a lot."""
+        sql = "UPDATE lots SET evidence_blob_url = %s WHERE id = %s"
+        with self._connect() as conn:
+            conn.execute(sql, (evidence_blob_url, lot_id))
+            conn.commit()
+
+    def verify_lot_producer(self, lot_code: str) -> bool:
+        """Mark the lot's producer as verified by the cooperative. False if lot not found."""
+        sql = """
+            UPDATE users
+            SET verified_by_coop = TRUE,
+                updated_at = NOW()
+            WHERE id = (SELECT user_id FROM lots WHERE lot_code = %s)
+            RETURNING id
+        """
+        with self._connect() as conn:
+            row = conn.execute(sql, (lot_code,)).fetchone()
+            conn.commit()
+            return row is not None
+
     def create_lot(
         self,
         user_id: Any,

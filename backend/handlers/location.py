@@ -18,10 +18,16 @@ class LocationStoreProtocol(Protocol):
     ) -> bool: ...
     def get_check_geometry(self, user_id: Any) -> dict[str, Any] | None: ...
     def set_farm_lots_gfw_status(self, user_id: Any, gfw_status: str) -> None: ...
+    def get_latest_farm_lots(self, user_id: Any) -> list[dict[str, Any]]: ...
+    def set_lot_evidence_url(self, lot_id: Any, evidence_blob_url: str) -> None: ...
 
 
 class GfwProtocol(Protocol):
     def check_geometry(self, geometry: dict[str, Any]) -> str: ...
+
+
+class EvidenceProtocol(Protocol):
+    def upload_lot_evidence(self, lot: dict[str, Any], geometry: dict[str, Any]) -> str: ...
 
 
 class WhatsAppProtocol(Protocol):
@@ -33,6 +39,7 @@ def handle_location(
     store: LocationStoreProtocol,
     whatsapp: WhatsAppProtocol,
     gfw: GfwProtocol | None = None,
+    evidence: EvidenceProtocol | None = None,
 ) -> bool:
     """Save a WhatsApp location pin. Returns True if the message was a location."""
     if message.get("type") != "location":
@@ -50,10 +57,20 @@ def handle_location(
     )
     logger.info("Location pin for ...%s saved=%s", wa_id[-4:], saved)
     whatsapp.send_text(wa_id, LOCATION_SAVED_REPLY if saved else LOCATION_FAILED_REPLY)
-    if saved and gfw is not None:
+    if saved and (gfw is not None or evidence is not None):
         geometry = store.get_check_geometry(user["id"])
         if geometry:
-            status = gfw.check_geometry(geometry)
-            store.set_farm_lots_gfw_status(user["id"], status)
-            logger.info("GFW status for ...%s: %s", wa_id[-4:], status)
+            if gfw is not None:
+                status = gfw.check_geometry(geometry)
+                store.set_farm_lots_gfw_status(user["id"], status)
+                logger.info("GFW status for ...%s: %s", wa_id[-4:], status)
+            if evidence is not None:
+                for lot in store.get_latest_farm_lots(user["id"]):
+                    try:
+                        url = evidence.upload_lot_evidence(lot, geometry)
+                        store.set_lot_evidence_url(lot["id"], url)
+                    except Exception:
+                        logger.exception(
+                            "Failed to upload evidence for lot %s", lot.get("lot_code")
+                        )
     return True

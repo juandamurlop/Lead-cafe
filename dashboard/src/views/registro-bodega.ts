@@ -45,7 +45,7 @@ export function registroBodega(coopId?: string, alCambiarZona?: (zona: string) =
       h('div', { class: 'kpis' },
         kpi('Última humedad ambiental', formatoHumedad(ultima.humedad), fechaCO(ultima.fecha), banda === 'segura' ? 'ok' : 'warn'),
         kpi('Temperatura interior', temperatura(ultima.temperatura), ultima.zona),
-        kpi('Tiempo desde la última lectura', antiguedad, ultima.ficticio ? 'Lectura ficticia de demostración' : undefined),
+        kpi('Tiempo desde la última lectura', antiguedad, undefined),
       ),
       h('p', { role: 'status' }, pill(nombres[banda], banda === 'segura' ? 'ok' : banda === 'critica' ? 'bad' : 'warn'), ' ',
         horas >= HORAS_SIN_LECTURA ? 'Sin lecturas recientes. Las condiciones actuales son desconocidas.' : ventilacion(ultima)),
@@ -54,7 +54,7 @@ export function registroBodega(coopId?: string, alCambiarZona?: (zona: string) =
       tablaOperacion(['Fecha y hora', 'Zona', 'Interior (°C)', 'HR interior', 'Exterior (°C)', 'HR exterior', 'Acción tomada', 'Observaciones', 'Responsable', 'Alerta y ventilación', 'Datos'],
         lista.map((m) => [fechaCO(m.fecha), m.zona, temperatura(m.temperatura), formatoHumedad(m.humedad),
           temperatura(m.temperaturaExterior), formatoHumedad(m.humedadExterior), m.accion || '—', m.observaciones || '—', m.responsable || '—',
-          `${nombres[bandaRiesgo(m.humedad)]} · ${ventilacion(m)}`, m.ficticio ? 'Ficticio' : 'Reportado'])),
+          `${nombres[bandaRiesgo(m.humedad)]} · ${ventilacion(m)}`, 'Reportado'])),
     );
   }
   filtro.addEventListener('change', mostrar);

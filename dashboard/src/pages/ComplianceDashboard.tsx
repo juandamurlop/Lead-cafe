@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { fetchLots, fetchSummary } from '../api/client';
+import { fetchLots, fetchSummary, verifyLotCoop } from '../api/client';
 import type { DataSource } from '../api/client';
 import { FarmPolygonMap } from '../components/FarmPolygonMap';
 import type { DashboardSummary, LotSummary } from '../types/lot';
@@ -34,6 +34,9 @@ export function ComplianceDashboard() {
   const [gfwFilter, setGfwFilter] = useState<string>('all');
   const [search, setSearch] = useState<string>('');
   const [loading, setLoading] = useState<boolean>(true);
+  const [lastRefreshed, setLastRefreshed] = useState<Date | null>(null);
+  const [verifyingCode, setVerifyingCode] = useState<string | null>(null);
+  const [reloadTick, setReloadTick] = useState<number>(0);
 
   useEffect(() => {
     let active = true;
@@ -44,13 +47,21 @@ export function ComplianceDashboard() {
         setLots(lotsRes.lots);
         setSource(lotsRes.source);
         setSummary(summaryRes);
+        setLastRefreshed(new Date());
         setLoading(false);
       },
     );
     return () => {
       active = false;
     };
-  }, [gfwFilter, search]);
+  }, [gfwFilter, search, reloadTick]);
+
+  async function handleVerify(lotCode: string) {
+    setVerifyingCode(lotCode);
+    const ok = await verifyLotCoop(lotCode);
+    setVerifyingCode(null);
+    if (ok) setReloadTick((t) => t + 1);
+  }
 
   const metrics = useMemo(() => {
     const clear = lots.filter((l) => l.gfw_status === 'clear').length;
@@ -79,7 +90,15 @@ export function ComplianceDashboard() {
             {source === null
               ? 'Conectando…'
               : source === 'api'
-                ? 'PostgreSQL en vivo'
+                ? `Última actualización: ${
+                    lastRefreshed
+                      ? lastRefreshed.toLocaleTimeString('es-CO', {
+                          hour: '2-digit',
+                          minute: '2-digit',
+                          second: '2-digit',
+                        })
+                      : '—'
+                  }`
                 : 'Modo demostración (cafeto.json)'}
           </span>
           {summary && (
@@ -186,6 +205,15 @@ export function ComplianceDashboard() {
                   <td>
                     {lot.verified_by_coop ? (
                       <span className="pill pill--clear">Verificado</span>
+                    ) : source === 'api' ? (
+                      <button
+                        type="button"
+                        className="pill pill--pending verify-btn"
+                        disabled={verifyingCode === lot.lot_code}
+                        onClick={() => handleVerify(lot.lot_code)}
+                      >
+                        {verifyingCode === lot.lot_code ? 'Verificando…' : 'Sin verificar · Verificar'}
+                      </button>
                     ) : (
                       <span className="pill pill--pending">Sin verificar</span>
                     )}

@@ -36,8 +36,9 @@ def _sign_blob_sas(
     blob_name: str,
     ttl_minutes: int = _DEFAULT_TTL_MINUTES,
     now: datetime | None = None,
+    permissions: str = "r",
 ) -> str:
-    """Generate a read-only, per-blob (sr=b) SAS query string."""
+    """Generate a per-blob (sr=b) SAS query string."""
     current = (now or datetime.now(timezone.utc)).astimezone(timezone.utc)
     start = (current - timedelta(minutes=5)).strftime("%Y-%m-%dT%H:%M:%SZ")
     expiry = (current + timedelta(minutes=ttl_minutes)).strftime("%Y-%m-%dT%H:%M:%SZ")
@@ -45,7 +46,7 @@ def _sign_blob_sas(
 
     string_to_sign = "\n".join(
         [
-            "r",                    # signedPermissions
+            permissions,            # signedPermissions
             start,                  # signedStart
             expiry,                 # signedExpiry
             canonicalized_resource, # canonicalizedResource
@@ -74,12 +75,38 @@ def _sign_blob_sas(
             "st": start,
             "se": expiry,
             "sr": "b",
-            "sp": "r",
+            "sp": permissions,
             "spr": "https",
             "sig": signature,
         },
         quote_via=quote,
     )
+
+
+def build_blob_urls(
+    account_name: str,
+    account_key: str,
+    container_name: str,
+    blob_name: str,
+    permissions: str = "r",
+    ttl_minutes: int = _DEFAULT_TTL_MINUTES,
+    now: datetime | None = None,
+) -> tuple[str, str]:
+    """Return (unsigned_blob_url, signed_blob_url) for a specific blob."""
+    base_url = (
+        f"https://{account_name}.blob.core.windows.net/"
+        f"{quote(container_name, safe='')}/{quote(blob_name, safe='/')}"
+    )
+    sas_query = _sign_blob_sas(
+        account_name=account_name,
+        account_key=account_key,
+        container_name=container_name,
+        blob_name=blob_name,
+        ttl_minutes=ttl_minutes,
+        now=now,
+        permissions=permissions,
+    )
+    return base_url, f"{base_url}?{sas_query}"
 
 
 def sign_evidence_url(

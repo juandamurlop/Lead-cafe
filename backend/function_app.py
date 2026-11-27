@@ -10,11 +10,12 @@ import azure.functions as func
 from azure.storage.queue import QueueClient, TextBase64EncodePolicy
 
 from api.cafeto import handle_get_cafeto_acopio, handle_get_cafeto_base
-from api.lots import handle_get_lot, handle_list_lots, to_json
+from api.lots import handle_get_lot, handle_list_lots, handle_verify_lot, to_json
 from handlers.audio import handle_audio
 from services.gfw import GfwClient
 from handlers.location import handle_location
 from handlers.registration import handle_registration
+from services.evidence import EvidenceUploader
 from services.foundry import FoundryClient
 from services.store import PostgresStore
 from services.whatsapp import WhatsAppClient
@@ -120,7 +121,23 @@ def get_lot(req: func.HttpRequest) -> func.HttpResponse:
     )
 
 
-def _get_queue_client() -> QueueClient:
+@app.route(route="lots/{lot_code}/verify", methods=["POST"])
+def verify_lot(req: func.HttpRequest) -> func.HttpResponse:
+    """Mark a lot's producer as verified by the cooperative."""
+    lot_code = req.route_params.get("lot_code", "")
+    try:
+        store = PostgresStore(os.environ["DATABASE_URL"])
+        status_code, payload = handle_verify_lot(store, lot_code)
+    except Exception:
+        logging.exception("Could not verify lot %s", lot_code)
+        return func.HttpResponse(status_code=503)
+
+    return func.HttpResponse(
+        to_json(payload),
+        status_code=status_code,
+        mimetype="application/json",
+        headers={"Cache-Control": "no-store"},
+    )
     conn_str = os.environ["AzureWebJobsStorage"]
     queue_name = os.environ.get("WHATSAPP_QUEUE_NAME", "whatsapp-inbound")
     # The Functions queue trigger expects Base64 messages by default.
@@ -209,7 +226,8 @@ def process_whatsapp_message(msg: func.QueueMessage) -> None:
 
     gfw_key = os.environ.get("GFW_API_KEY")
     gfw = GfwClient(gfw_key) if gfw_key else None
-    if handle_location(envelope, store, whatsapp, gfw):
+    evidence = EvidenceUploader.from_env()
+    if handle_location(envelope, store, whatsapp, gfw, evidence):
         logging.info("Message %s handled by location flow", source_message_id)
         return
 

@@ -2,7 +2,7 @@ import { Store } from './lib/store';
 import type { Aire } from './domain/psychro';
 import type { EstadoExpediente } from './data/tipos';
 
-export type Vista = 'panorama' | 'mapa' | 'cadena' | 'expediente' | 'secado' | 'bodega' | 'acopio';
+export type Vista = 'panorama' | 'cadena' | 'expediente' | 'secado' | 'bodega' | 'acopio';
 export type Red = 0 | 1 | 2 | 3;
 
 export interface Toast { id: number; texto: string; tono: 'ok' | 'warn' | 'bad' }
@@ -65,7 +65,7 @@ export const RED_TEXTO: Record<Red, { nombre: string; detalle: string }> = {
 };
 
 export const store = new Store<Estado>({
-  vista: 'mapa',
+  vista: 'panorama',
   red: 0,
   cargando: true,
   error: null,

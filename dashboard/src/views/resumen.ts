@@ -19,7 +19,7 @@ export function vistaResumen(): HTMLElement {
         kpi('Eventos EPCIS', entero(resumen.events)),
       ));
     } catch {
-      mount(contenido, 'Resumen de Lote Claro no disponible. Los datos de demostración siguen disponibles.');
+      mount(contenido, 'Resumen de Lote Claro no disponible.');
     } finally {
       recargar.toggleAttribute('disabled', false);
     }

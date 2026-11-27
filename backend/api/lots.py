@@ -21,6 +21,7 @@ class LotStore(Protocol):
         search: str | None = None,
     ) -> list[dict[str, Any]]: ...
     def get_lot_by_code(self, lot_code: str) -> dict[str, Any] | None: ...
+    def verify_lot_producer(self, lot_code: str) -> bool: ...
 
 
 def _json_default(value: Any) -> Any:
@@ -69,3 +70,15 @@ def handle_get_lot(store: LotStore, lot_code: str) -> tuple[int, dict[str, Any]]
     if lot.get("evidence_blob_url"):
         lot["evidence_blob_url"] = sign_evidence_url(lot["evidence_blob_url"])
     return 200, lot
+
+
+def handle_verify_lot(store: LotStore, lot_code: str) -> tuple[int, dict[str, Any]]:
+    """Mark a lot's producer as verified by the cooperative."""
+    code = lot_code.strip()
+    if not code:
+        return 400, {"error": "lot_code is required"}
+
+    if not store.verify_lot_producer(code):
+        return 404, {"error": f"Lot '{code}' not found"}
+
+    return 200, {"lot_code": code, "verified_by_coop": True}

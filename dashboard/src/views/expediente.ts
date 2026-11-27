@@ -69,7 +69,6 @@ function tablaLotes(b: Base): HTMLElement {
         const l = b.raw.lotes.find((x) => x.id === e.loteId);
         return h('tr', {
           class: `fila fila--${TONO[e.estado]}`,
-          onClick: () => store.set({ vista: 'mapa', fincaSel: e.fincaId, zonaSel: f?.departamento ?? null, acopioSel: f?.coopId ?? null }),
         },
           h('td', { class: 'mono', text: e.loteId }),
           h('td', { text: f?.nombre ?? e.fincaId }),

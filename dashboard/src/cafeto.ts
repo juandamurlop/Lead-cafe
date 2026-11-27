@@ -1,11 +1,10 @@
 import { h, mount } from './lib/dom';
 import { limpiarSlots, refrescarSlots, slot } from './lib/reactive';
-import { RED_TEXTO, store } from './state';
-import type { Red, Vista } from './state';
+import { store } from './state';
+import type { Vista } from './state';
 import { cargarBase } from './data/db';
 import type { Base } from './data/db';
 import { vistaPanorama } from './views/panorama';
-import { vistaMapa } from './views/mapa';
 import { vistaCadena } from './views/cadena';
 import { vistaExpediente } from './views/expediente';
 import { vistaSecado } from './views/secado';
@@ -16,7 +15,6 @@ import { cargarAcopio } from './data/excel';
 interface ItemNav { id: Vista; nombre: string; icono: string; sub: string; grupo: string }
 
 const NAV: ItemNav[] = [
-  { id: 'mapa', nombre: 'Mapa', icono: '⬡', sub: 'zonas, acopios, fincas', grupo: 'Datos' },
   { id: 'panorama', nombre: 'Panorama', icono: '◉', sub: 'todo de un vistazo', grupo: 'Datos' },
   { id: 'cadena', nombre: 'Cadena', icono: '⇄', sub: 'etapa por etapa', grupo: 'Datos' },
   { id: 'expediente', nombre: 'Expediente', icono: '▤', sub: 'EUDR · Laura', grupo: 'Datos' },
@@ -31,7 +29,7 @@ function irA(v: Vista): void {
   else store.set({ vista: v });
 }
 
-function sidebar(abrirCumplimiento: () => void): HTMLElement {
+function sidebar(abrirCumplimiento: () => void, ultimaActualizacion: Date | null): HTMLElement {
   const grupos = [...new Set(NAV.map((n) => n.grupo))];
   return h('nav', { class: 'side', 'aria-label': 'Secciones' },
     h('div', { class: 'brand' },
@@ -57,38 +55,24 @@ function sidebar(abrirCumplimiento: () => void): HTMLElement {
       abrirCumplimiento();
     } }),
     h('footer', { class: 'side-f' },
-      h('p', { text: 'Base de 50 fincas ficticias. Gravimet de Cenicafé, ecuación de Magnus y precio interno FNC del 25-nov-2026.' }),
-    ),
-  );
-}
-
-function topbar(): HTMLElement {
-  return h('header', { class: 'top' },
-    slot(() => {
-      const red = store.get().red;
-      const estado = red === 0 ? 'offline' : red === 3 ? 'full' : 'low';
-      return h('div', { class: 'top-in' },
-        h('div', { class: `netpill netpill--${estado}` },
-          h('span', { class: 'netdot' }),
-          h('strong', { text: `Simulación · ${RED_TEXTO[red].nombre}` }),
-        ),
-        h('p', { class: 'net-detail', text: RED_TEXTO[red].detalle }),
-      );
-    }),
-    h('div', { class: 'seg', role: 'group', 'aria-label': 'Estado de la red' },
-      ...([0, 1, 2, 3] as Red[]).map((r) => slot(() => h('button', {
-        class: `seg-b ${r === store.get().red ? 'is-on' : ''}`, type: 'button',
-        'aria-pressed': r === store.get().red ? 'true' : 'false',
-        onClick: () => store.set({ red: r }),
-        text: RED_TEXTO[r].nombre,
-      }))),
+      h('p', {
+        text: `Última actualización: ${
+          ultimaActualizacion
+            ? ultimaActualizacion.toLocaleTimeString('es-CO', {
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit',
+              })
+            : '—'
+        }`,
+      }),
+      h('p', { text: 'Base de 50 fincas registradas. Gravimet de Cenicafé, ecuación de Magnus y precio interno FNC del 25-nov-2026.' }),
     ),
   );
 }
 
 function cuerpo(b: Base, v: Vista): HTMLElement {
   switch (v) {
-    case 'mapa': return vistaMapa(b);
     case 'cadena': return vistaCadena(b);
     case 'expediente': return vistaExpediente(b);
     case 'secado': return vistaSecado();
@@ -108,10 +92,11 @@ function pantallaCarga(mensaje: string, error = false): HTMLElement {
 export function montarCafeto(root: HTMLElement, abrirCumplimiento: () => void): () => void {
   let base: Base | null = null;
   let vistaMontada: Vista | null = null;
+  let ultimaActualizacion: Date | null = null;
   let activo = true;
   const actualizarRuta = () => {
     const hash = location.hash.slice(1);
-    store.set({ vista: VALIDAS.has(hash) ? hash as Vista : 'mapa' });
+    store.set({ vista: VALIDAS.has(hash) ? hash as Vista : 'panorama' });
   };
 
   function montar(): void {
@@ -123,8 +108,8 @@ export function montarCafeto(root: HTMLElement, abrirCumplimiento: () => void): 
     }
 
     mount(root,
-      sidebar(abrirCumplimiento),
-      h('main', { class: 'content' }, topbar(), cuerpo(base, s.vista)),
+      sidebar(abrirCumplimiento, ultimaActualizacion),
+      h('main', { class: 'content' }, cuerpo(base, s.vista)),
       slot(() => h('div', { class: 'toasts', role: 'status', 'aria-live': 'polite' },
         ...store.get().toasts.map((t) => h('div', { class: `toast toast--${t.tono}`, text: t.texto })),
       )),
@@ -153,6 +138,7 @@ export function montarCafeto(root: HTMLElement, abrirCumplimiento: () => void): 
       await cargarAcopio(b, url('data/Acopio_Hernan_vinculado_repo.xlsx')).catch((error) => console.warn('Cafeto sin datos de acopio', error));
       if (!activo) return;
       base = b;
+      ultimaActualizacion = new Date();
       store.set({ cargando: false });
     })
     .catch((e: unknown) => {

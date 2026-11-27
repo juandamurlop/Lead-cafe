@@ -285,13 +285,14 @@
 .aviso--warn{background:var(--warn-soft);border-color:#eddcbb}.aviso--warn .aviso-dot{background:var(--warn)}
 .aviso--bad{background:var(--bad-soft);border-color:#f0ccca}.aviso--bad .aviso-dot{background:var(--bad)}
 .aviso-go{margin-left:auto;color:var(--faint)}
-.tri{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px}
-.tri-i{border:1px solid var(--line);border-radius:12px;padding:16px;cursor:pointer;
+.tri{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px;align-items:stretch}
+.tri-i{display:flex;flex-direction:column;border:1px solid var(--line);border-radius:12px;padding:16px;cursor:pointer;
   background:var(--surface-2);transition:.15s}
 .tri-i:hover{border-color:var(--accent);transform:translateY(-2px);box-shadow:var(--sh)}
 .tri-n{font-family:var(--mono);font-size:11px;color:var(--accent);font-weight:600}
 .tri-i h3{font-size:14.5px;font-weight:650;margin:5px 0 6px}
 .tri-i p{font-size:12.5px;color:var(--mut);line-height:1.5;margin-bottom:10px}
+.tri-i .pill{margin-top:auto;align-self:flex-start}
 
 /* ------------------------------------------------------------- mapa */
 .card--mapa,.card--panel{min-height:0}
