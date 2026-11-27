@@ -9,7 +9,10 @@ import unittest
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from handlers.registration import (
+    ACOPIO_COMPLETE_REPLY_TEMPLATE,
+    ASK_ACOPIO_PROMPT,
     ASK_FARM_PROMPT,
+    ASK_ROLE_PROMPT,
     ASK_NAME_PROMPT,
     CONSENT_PROMPT,
     DECLINED_REPLY,
@@ -29,7 +32,7 @@ class FakeStore:
         user = {
             "id": "user-1",
             "wa_id": wa_id,
-            "role": "farmer",
+            "role": "productor", "requested_role": None,
             "name": None,
             "registration_state": "awaiting_consent",
             "verified_by_coop": False,
@@ -40,15 +43,24 @@ class FakeStore:
 
     def accept_consent(self, wa_id: str) -> None:
         self.users[wa_id]["consent_status"] = "accepted"
-        self.users[wa_id]["registration_state"] = "awaiting_name"
+        self.users[wa_id]["registration_state"] = "awaiting_role"
 
     def decline_consent(self, wa_id: str) -> None:
         self.users[wa_id]["consent_status"] = "declined"
         self.users[wa_id]["registration_state"] = "declined"
 
+    def save_requested_role(self, wa_id: str, requested_role: str) -> None:
+        self.users[wa_id]["requested_role"] = requested_role
+        self.users[wa_id]["role"] = requested_role
+        self.users[wa_id]["registration_state"] = "awaiting_name"
+
     def save_user_name(self, wa_id: str, name: str) -> None:
         self.users[wa_id]["name"] = name
         self.users[wa_id]["registration_state"] = "awaiting_farm"
+
+    def complete_registration_as_acopio(self, wa_id: str, acopio_name: str) -> None:
+        self.users[wa_id]["acopio_name"] = acopio_name
+        self.users[wa_id]["registration_state"] = "complete"
 
     def complete_registration_with_farm(self, user_id: str, wa_id: str, farm_name: str) -> None:
         self.farms.append({"user_id": user_id, "name": farm_name})
@@ -59,12 +71,16 @@ class FakeWhatsApp:
     def __init__(self) -> None:
         self.texts: list[tuple[str, str]] = []
         self.buttons: list[tuple[str, str]] = []
+        self.role_buttons: list[tuple[str, str]] = []
 
     def send_text(self, to_wa_id: str, body: str) -> None:
         self.texts.append((to_wa_id, body))
 
     def send_consent_buttons(self, to_wa_id: str, body: str) -> None:
         self.buttons.append((to_wa_id, body))
+
+    def send_role_buttons(self, to_wa_id: str, body: str) -> None:
+        self.role_buttons.append((to_wa_id, body))
 
     def download_media(self, media_id: str) -> tuple[bytes, str]:
         return b"fake-ogg-bytes", "audio/ogg"
@@ -104,6 +120,17 @@ class RegistrationFlowTests(unittest.TestCase):
             foundry,
         )
         self.assertTrue(handled)
+        self.assertEqual(store.users[wa_id]["registration_state"], "awaiting_role")
+        self.assertEqual(wa.role_buttons, [(wa_id, ASK_ROLE_PROMPT)])
+
+        # 2b. User picks [Soy productor]
+        handle_registration(
+            {"wa_id": wa_id, "type": "interactive", "button_id": "role_productor"},
+            store,
+            wa,
+            foundry,
+        )
+        self.assertEqual(store.users[wa_id]["role"], "productor")
         self.assertEqual(store.users[wa_id]["registration_state"], "awaiting_name")
         self.assertEqual(wa.texts[-1], (wa_id, ASK_NAME_PROMPT))
 
@@ -139,6 +166,38 @@ class RegistrationFlowTests(unittest.TestCase):
             foundry,
         )
         self.assertFalse(handled)
+
+    def test_acopio_onboarding_gets_role_and_no_farm(self) -> None:
+        store = FakeStore()
+        wa = FakeWhatsApp()
+        foundry = FakeFoundry()
+        wa_id = "573007654321"
+
+        handle_registration({"wa_id": wa_id, "type": "text", "text": "Hola"}, store, wa, foundry)
+        handle_registration(
+            {"wa_id": wa_id, "type": "interactive", "button_id": "consent_yes"}, store, wa, foundry
+        )
+        # Unrecognized reply re-sends the role buttons
+        handle_registration({"wa_id": wa_id, "type": "text", "text": "??"}, store, wa, foundry)
+        self.assertEqual(len(wa.role_buttons), 2)
+
+        handle_registration(
+            {"wa_id": wa_id, "type": "interactive", "button_id": "role_acopio"}, store, wa, foundry
+        )
+        self.assertEqual(store.users[wa_id]["role"], "acopio")
+        handle_registration(
+            {"wa_id": wa_id, "type": "text", "text": "Hernán Ruiz"}, store, wa, foundry
+        )
+        self.assertEqual(wa.texts[-1], (wa_id, ASK_ACOPIO_PROMPT))
+        handle_registration(
+            {"wa_id": wa_id, "type": "text", "text": "Acopio Cafeto"}, store, wa, foundry
+        )
+        self.assertEqual(store.users[wa_id]["registration_state"], "complete")
+        self.assertEqual(store.users[wa_id]["acopio_name"], "Acopio Cafeto")
+        self.assertEqual(store.farms, [])
+        self.assertEqual(
+            wa.texts[-1], (wa_id, ACOPIO_COMPLETE_REPLY_TEMPLATE.format(name="Hernán Ruiz"))
+        )
 
     def test_decline_consent(self) -> None:
         store = FakeStore()

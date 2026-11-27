@@ -15,11 +15,11 @@ The *Lote Claro* backend receives WhatsApp Business Cloud API webhooks (voice no
    - Python is chosen for native compatibility with the **Microsoft Foundry** SDK, geospatial libraries (`shapely`, `pyproj`), and existing audio tooling ([scripts/convert_audio.py](../../scripts/convert_audio.py)).
 
 2. **Role Identification & Unregistered `wa_id` Onboarding (`users` Table)**
-   - Identify whether a sender is a **farmer** or **acopio** manager by looking up their WhatsApp `wa_id` (phone number) in the `users` table (`role` ∈ `{'farmer', 'acopio'}`).
+   - Identify whether a sender is a **productor** or **acopio** manager by looking up their WhatsApp `wa_id` (phone number) in the `users` table (`role` ∈ `{'productor', 'acopio'}`).
    - **Unregistered `wa_id` Flow (`handlers/registration.py`):** If `wa_id` is not found (or `registration_state != 'complete'`), route the message to the WhatsApp onboarding state machine before normal lot/location handling:
      1. **Consent:** Send interactive buttons asking for data & location consent (*"¿Aceptas? [Sí, acepto] [No]"*). If declined, stop without storing personal data.
-     2. **Name & Farm/Coop:** Ask for their full name and farm/cooperative (accepting **either text or a voice note** transcribed via Microsoft Foundry for low-literacy users).
-     3. **Create Record:** Insert into `users` (`role = 'farmer'` by default, `consent_status = 'accepted'`, `registration_state = 'complete'`, `verified_by_coop = false` unless pre-seeded by the cooperative).
+     2. **Role, Name & Farm/Coop:** Offer `[Soy productor]` / `[Centro de acopio]` buttons, then Ask for their full name and farm/cooperative (accepting **either text or a voice note** transcribed via Microsoft Foundry for low-literacy users).
+     3. **Create Record:** Insert into `users` (`role = 'productor'` by default (or `'acopio'` if chosen in onboarding), `consent_status = 'accepted'`, `registration_state = 'complete'`, `verified_by_coop = false` unless pre-seeded by the cooperative).
      4. **Cooperative Verification:** Farmers can immediately submit lots/pins (flagged as unverified until an `acopio` manager or Laura approves them in the dashboard).
 
 3. **WhatsApp Webhook Security & Async Ingestion**

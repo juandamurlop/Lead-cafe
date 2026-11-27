@@ -85,7 +85,7 @@ class PostgresStore:
     def get_user_by_wa_id(self, wa_id: str) -> dict[str, Any] | None:
         """Fetch user record by WhatsApp ID."""
         sql = """
-            SELECT id, wa_id, role, name, registration_state,
+            SELECT id, wa_id, role, requested_role, name, registration_state,
                    verified_by_coop, consent_status, consent_updated_at
             FROM users
             WHERE wa_id = %s
@@ -94,15 +94,15 @@ class PostgresStore:
             return conn.execute(sql, (wa_id,)).fetchone()
 
     def create_pending_user(self, wa_id: str) -> dict[str, Any]:
-        """Insert a new self-registered farmer awaiting consent."""
+        """Insert a new self-registered productor awaiting consent."""
         sql = """
             INSERT INTO users (wa_id, role, registration_state, verified_by_coop, consent_status)
-            VALUES (%s, 'farmer', 'awaiting_consent', FALSE, 'pending')
+            VALUES (%s, 'productor', 'awaiting_consent', FALSE, 'pending')
             ON CONFLICT (wa_id) DO UPDATE
                 SET registration_state = 'awaiting_consent',
                     consent_status = 'pending',
                     updated_at = NOW()
-            RETURNING id, wa_id, role, name, registration_state,
+            RETURNING id, wa_id, role, requested_role, name, registration_state,
                       verified_by_coop, consent_status, consent_updated_at
         """
         with self._connect() as conn:
@@ -112,17 +112,35 @@ class PostgresStore:
             return row
 
     def accept_consent(self, wa_id: str) -> None:
-        """Mark consent accepted and advance onboarding to awaiting_name."""
+        """Mark consent accepted and advance onboarding to awaiting_role."""
         sql = """
             UPDATE users
             SET consent_status = 'accepted',
                 consent_updated_at = NOW(),
-                registration_state = 'awaiting_name',
+                registration_state = 'awaiting_role',
                 updated_at = NOW()
             WHERE wa_id = %s
         """
         with self._connect() as conn:
             conn.execute(sql, (wa_id,))
+            conn.commit()
+
+    def save_requested_role(self, wa_id: str, requested_role: str) -> None:
+        """Record the role the user picked and grant it immediately.
+
+        Hackathon shortcut: self-selected 'acopio' is always allowed. Restore the admin
+        approval step (keep users.role = 'productor' until approved) before production.
+        """
+        sql = """
+            UPDATE users
+            SET requested_role = %s,
+                role = %s,
+                registration_state = 'awaiting_name',
+                updated_at = NOW()
+            WHERE wa_id = %s
+        """
+        with self._connect() as conn:
+            conn.execute(sql, (requested_role, requested_role, wa_id))
             conn.commit()
 
     def decline_consent(self, wa_id: str) -> None:
@@ -292,6 +310,19 @@ class PostgresStore:
         with self._connect() as conn:
             conn.execute(insert_farm, (user_id, farm_name))
             conn.execute(update_user, (wa_id,))
+            conn.commit()
+
+    def complete_registration_as_acopio(self, wa_id: str, acopio_name: str) -> None:
+        """Store the collection center name (no farm) and mark registration complete."""
+        sql = """
+            UPDATE users
+            SET acopio_name = %s,
+                registration_state = 'complete',
+                updated_at = NOW()
+            WHERE wa_id = %s
+        """
+        with self._connect() as conn:
+            conn.execute(sql, (acopio_name, wa_id))
             conn.commit()
 
     def list_lots(

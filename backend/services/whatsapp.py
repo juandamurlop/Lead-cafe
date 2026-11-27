@@ -62,6 +62,34 @@ class WhatsAppClient:
             resp = client.post(url, headers=self._headers(), json=payload)
             resp.raise_for_status()
 
+    def send_role_buttons(self, to_wa_id: str, body: str) -> None:
+        """Send interactive role reply buttons ('Soy productor' / 'Centro de acopio')."""
+        url = f"{self._base_url}/{self._phone_number_id}/messages"
+        payload = {
+            "messaging_product": "whatsapp",
+            "to": to_wa_id,
+            "type": "interactive",
+            "interactive": {
+                "type": "button",
+                "body": {"text": body},
+                "action": {
+                    "buttons": [
+                        {
+                            "type": "reply",
+                            "reply": {"id": "role_productor", "title": "Soy productor"},
+                        },
+                        {
+                            "type": "reply",
+                            "reply": {"id": "role_acopio", "title": "Centro de acopio"},
+                        },
+                    ]
+                },
+            },
+        }
+        with httpx.Client(timeout=15.0) as client:
+            resp = client.post(url, headers=self._headers(), json=payload)
+            resp.raise_for_status()
+
     def send_location_request(self, to_wa_id: str, body: str) -> None:
         """Send a message with a one-tap 'Send location' button."""
         url = f"{self._base_url}/{self._phone_number_id}/messages"
