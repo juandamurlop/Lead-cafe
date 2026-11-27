@@ -19,6 +19,25 @@ from webhook.verify import verify_challenge, verify_signature
 app = func.FunctionApp(http_auth_level=func.AuthLevel.ANONYMOUS)
 
 
+@app.route(route="dashboard/summary", methods=["GET"])
+def dashboard_summary(req: func.HttpRequest) -> func.HttpResponse:
+    """Expose the aggregate dashboard counters when explicitly enabled."""
+    if os.environ.get("DASHBOARD_SUMMARY_ENABLED") != "true":
+        return func.HttpResponse(status_code=404)
+
+    try:
+        summary = PostgresStore(os.environ["DATABASE_URL"]).dashboard_summary()
+    except Exception:
+        logging.exception("Could not load dashboard summary")
+        return func.HttpResponse(status_code=503)
+
+    return func.HttpResponse(
+        json.dumps(summary),
+        mimetype="application/json",
+        headers={"Cache-Control": "no-store"},
+    )
+
+
 def _get_queue_client() -> QueueClient:
     conn_str = os.environ["AzureWebJobsStorage"]
     queue_name = os.environ.get("WHATSAPP_QUEUE_NAME", "whatsapp-inbound")
