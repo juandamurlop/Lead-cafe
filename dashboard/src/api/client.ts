@@ -134,6 +134,12 @@ async function loadDemoLots(): Promise<LotDetail[]> {
   return cachedDemoLots;
 }
 
+const API_BASE = ((import.meta as { env?: Record<string, string | undefined> }).env?.VITE_API_BASE_URL ?? '').replace(/\/+$/, '');
+
+function apiUrl(path: string): string {
+  return `${API_BASE}${path}`;
+}
+
 export async function fetchLots(
   gfwStatus: string,
   search: string,
@@ -143,7 +149,7 @@ export async function fetchLots(
   if (search.trim()) params.set('search', search.trim());
 
   try {
-    const res = await fetch(`/api/lots?${params.toString()}`, {
+    const res = await fetch(apiUrl(`/api/lots?${params.toString()}`), {
       cache: 'no-store',
       signal: AbortSignal.timeout(4000),
     });
@@ -173,7 +179,7 @@ export async function fetchLots(
 
 export async function fetchLotByCode(lotCode: string): Promise<LotDetailResult> {
   try {
-    const res = await fetch(`/api/lots/${encodeURIComponent(lotCode)}`, {
+    const res = await fetch(apiUrl(`/api/lots/${encodeURIComponent(lotCode)}`), {
       cache: 'no-store',
       signal: AbortSignal.timeout(4000),
     });
@@ -195,7 +201,7 @@ export async function fetchLotByCode(lotCode: string): Promise<LotDetailResult> 
 
 export async function fetchSummary(): Promise<DashboardSummary | null> {
   try {
-    const res = await fetch('/api/dashboard/summary', {
+    const res = await fetch(apiUrl('/api/dashboard/summary'), {
       cache: 'no-store',
       signal: AbortSignal.timeout(3000),
     });

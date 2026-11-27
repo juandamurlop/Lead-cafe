@@ -13,10 +13,10 @@ param location string
 param pgAdminUser string
 
 @description('PostgreSQL Flexible Server SKU name.')
-param pgSkuName string = 'Standard_B2s'
+param pgSkuName string = 'Standard_D2ds_v4'
 
 @description('PostgreSQL Flexible Server SKU tier.')
-param pgSkuTier string = 'Burstable'
+param pgSkuTier string = 'GeneralPurpose'
 
 @secure()
 @description('PostgreSQL administrator password.')
@@ -38,13 +38,14 @@ param foundryModelSku string = 'GlobalStandard'
 
 var uniqueSuffix = uniqueString(resourceGroup().id)
 var storageName = toLower('st${take(projectName, 8)}${take(uniqueSuffix, 10)}')
-var pgServerName = '${projectName}-${environment}-pg-${take(uniqueSuffix, 6)}'
+var pgServerName = '${projectName}-${environment}-pg-${take(uniqueSuffix, 8)}'
 var pgDatabaseName = 'lote_claro'
 var foundryName = '${projectName}-${environment}-ai-${take(uniqueSuffix, 6)}'
 var logAnalyticsName = '${projectName}-${environment}-law'
 var appInsightsName = '${projectName}-${environment}-ai'
 var planName = '${projectName}-${environment}-plan'
 var functionAppName = '${projectName}-${environment}-func-${take(uniqueSuffix, 6)}'
+var staticWebAppName = '${projectName}-${environment}-swa-${take(uniqueSuffix, 6)}'
 var queueName = 'whatsapp-inbound'
 var evidenceContainerName = 'compliance-evidence'
 var deploymentContainerName = 'app-package'
@@ -211,6 +212,18 @@ resource hostingPlan 'Microsoft.Web/serverfarms@2023-12-01' = {
 var storageConnectionString = 'DefaultEndpointsProtocol=https;AccountName=${storage.name};EndpointSuffix=${az.environment().suffixes.storage};AccountKey=${storage.listKeys().keys[0].value}'
 var databaseUrl = 'postgresql://${pgAdminUser}:${uriComponent(pgAdminPassword)}@${pgServer.properties.fullyQualifiedDomainName}:5432/${pgDatabaseName}?sslmode=require'
 
+resource staticWebApp 'Microsoft.Web/staticSites@2023-12-01' = {
+  name: staticWebAppName
+  location: location
+  sku: {
+    name: 'Free'
+    tier: 'Free'
+  }
+  properties: {
+    allowConfigFileUpdates: true
+  }
+}
+
 resource functionApp 'Microsoft.Web/sites@2023-12-01' = {
   name: functionAppName
   location: location
@@ -219,7 +232,16 @@ resource functionApp 'Microsoft.Web/sites@2023-12-01' = {
     serverFarmId: hostingPlan.id
     httpsOnly: true
     siteConfig: {
+      cors: {
+        allowedOrigins: [
+          'https://${staticWebApp.properties.defaultHostname}'
+        ]
+      }
       appSettings: [
+        {
+          name: 'DASHBOARD_SUMMARY_ENABLED'
+          value: 'true'
+        }
         {
           name: 'AzureWebJobsStorage'
           value: storageConnectionString
@@ -302,6 +324,8 @@ resource functionApp 'Microsoft.Web/sites@2023-12-01' = {
 
 output functionAppName string = functionApp.name
 output functionAppHostName string = functionApp.properties.defaultHostName
+output staticWebAppName string = staticWebApp.name
+output staticWebAppHostName string = staticWebApp.properties.defaultHostname
 output postgresHost string = pgServer.properties.fullyQualifiedDomainName
 output storageAccountName string = storage.name
 output foundryEndpoint string = foundryAccount.properties.endpoint

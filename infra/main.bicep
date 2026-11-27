@@ -13,10 +13,10 @@ param location string = 'canadacentral'
 param pgAdminUser string = 'loteadmin'
 
 @description('PostgreSQL Flexible Server SKU name.')
-param pgSkuName string = 'Standard_B2s'
+param pgSkuName string = 'Standard_D2ds_v4'
 
 @description('PostgreSQL Flexible Server SKU tier.')
-param pgSkuTier string = 'Burstable'
+param pgSkuTier string = 'GeneralPurpose'
 
 @secure()
 @description('PostgreSQL administrator password.')
@@ -81,6 +81,8 @@ module core 'resources.bicep' = {
 output resourceGroupName string = rg.name
 output functionAppName string = core.outputs.functionAppName
 output functionAppHostName string = core.outputs.functionAppHostName
+output staticWebAppName string = core.outputs.staticWebAppName
+output staticWebAppHostName string = core.outputs.staticWebAppHostName
 output postgresHost string = core.outputs.postgresHost
 output storageAccountName string = core.outputs.storageAccountName
 output foundryEndpoint string = core.outputs.foundryEndpoint
