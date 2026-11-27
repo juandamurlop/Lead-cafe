@@ -31,15 +31,14 @@ param whatsappAccessToken string = ''
 @description('WhatsApp Business Phone Number ID.')
 param whatsappPhoneNumberId string = ''
 
-@description('Microsoft Foundry endpoint URL.')
-param foundryEndpoint string = ''
-
-@secure()
-@description('Microsoft Foundry API key.')
-param foundryApiKey string = ''
-
-@description('Microsoft Foundry audio/chat deployment name.')
+@description('Microsoft Foundry audio transcription model name.')
 param foundryModel string = 'gpt-4o-transcribe'
+
+@description('Microsoft Foundry audio model version.')
+param foundryModelVersion string = '2025-03-20'
+
+@description('Microsoft Foundry model deployment SKU.')
+param foundryModelSku string = 'GlobalStandard'
 
 var rgName = 'rg-${projectName}-${environment}'
 
@@ -65,9 +64,9 @@ module core 'resources.bicep' = {
     metaAppSecret: metaAppSecret
     whatsappAccessToken: whatsappAccessToken
     whatsappPhoneNumberId: whatsappPhoneNumberId
-    foundryEndpoint: foundryEndpoint
-    foundryApiKey: foundryApiKey
     foundryModel: foundryModel
+    foundryModelVersion: foundryModelVersion
+    foundryModelSku: foundryModelSku
   }
 }
 
@@ -76,3 +75,4 @@ output functionAppName string = core.outputs.functionAppName
 output functionAppHostName string = core.outputs.functionAppHostName
 output postgresHost string = core.outputs.postgresHost
 output storageAccountName string = core.outputs.storageAccountName
+output foundryEndpoint string = core.outputs.foundryEndpoint

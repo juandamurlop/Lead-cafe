@@ -26,17 +26,15 @@ param metaAppSecret string = ''
 param whatsappAccessToken string = ''
 
 param whatsappPhoneNumberId string = ''
-param foundryEndpoint string = ''
-
-@secure()
-param foundryApiKey string = ''
-
 param foundryModel string = 'gpt-4o-transcribe'
+param foundryModelVersion string = '2025-03-20'
+param foundryModelSku string = 'GlobalStandard'
 
 var uniqueSuffix = uniqueString(resourceGroup().id)
 var storageName = toLower('st${take(projectName, 8)}${take(uniqueSuffix, 10)}')
 var pgServerName = '${projectName}-${environment}-pg-${take(uniqueSuffix, 6)}'
 var pgDatabaseName = 'lote_claro'
+var foundryName = '${projectName}-${environment}-ai-${take(uniqueSuffix, 6)}'
 var logAnalyticsName = '${projectName}-${environment}-law'
 var appInsightsName = '${projectName}-${environment}-ai'
 var planName = '${projectName}-${environment}-plan'
@@ -153,6 +151,35 @@ resource pgDatabase 'Microsoft.DBforPostgreSQL/flexibleServers/databases@2023-12
   }
 }
 
+resource foundryAccount 'Microsoft.CognitiveServices/accounts@2024-10-01' = {
+  name: foundryName
+  location: location
+  kind: 'AIServices'
+  sku: {
+    name: 'S0'
+  }
+  properties: {
+    customSubDomainName: foundryName
+    publicNetworkAccess: 'Enabled'
+  }
+}
+
+resource foundryDeployment 'Microsoft.CognitiveServices/accounts/deployments@2024-10-01' = {
+  parent: foundryAccount
+  name: foundryModel
+  sku: {
+    name: foundryModelSku
+    capacity: 10
+  }
+  properties: {
+    model: {
+      format: 'OpenAI'
+      name: foundryModel
+      version: foundryModelVersion
+    }
+  }
+}
+
 resource hostingPlan 'Microsoft.Web/serverfarms@2023-12-01' = {
   name: planName
   location: location
@@ -166,7 +193,7 @@ resource hostingPlan 'Microsoft.Web/serverfarms@2023-12-01' = {
   }
 }
 
-var storageConnectionString = 'DefaultEndpointsProtocol=https;AccountName=${storage.name};EndpointSuffix=${environment().suffixes.storage};AccountKey=${storage.listKeys().keys[0].value}'
+var storageConnectionString = 'DefaultEndpointsProtocol=https;AccountName=${storage.name};EndpointSuffix=${az.environment().suffixes.storage};AccountKey=${storage.listKeys().keys[0].value}'
 var databaseUrl = 'postgresql://${pgAdminUser}:${uriComponent(pgAdminPassword)}@${pgServer.properties.fullyQualifiedDomainName}:5432/${pgDatabaseName}?sslmode=require'
 
 resource functionApp 'Microsoft.Web/sites@2023-12-01' = {
@@ -226,15 +253,15 @@ resource functionApp 'Microsoft.Web/sites@2023-12-01' = {
         }
         {
           name: 'FOUNDRY_ENDPOINT'
-          value: foundryEndpoint
+          value: foundryAccount.properties.endpoint
         }
         {
           name: 'FOUNDRY_API_KEY'
-          value: foundryApiKey
+          value: foundryAccount.listKeys().key1
         }
         {
           name: 'FOUNDRY_MODEL'
-          value: foundryModel
+          value: foundryDeployment.name
         }
       ]
     }
@@ -251,3 +278,4 @@ output functionAppName string = functionApp.name
 output functionAppHostName string = functionApp.properties.defaultHostName
 output postgresHost string = pgServer.properties.fullyQualifiedDomainName
 output storageAccountName string = storage.name
+output foundryEndpoint string = foundryAccount.properties.endpoint
