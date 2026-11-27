@@ -8,6 +8,8 @@ import { store } from '../state';
 
 const W = 660, H = 556;
 const COL_X = [34, 248, 450, 606];
+/** Ancho de cada columna de bloques: la de departamentos es más ancha para nombres como «Norte de Santander». */
+const ANCHO = [140, 110, 110, 110];
 const GAP = 7;
 
 const TONO: Record<EstadoExpediente, 'ok' | 'warn' | 'bad'> = {
@@ -143,7 +145,7 @@ function dibujarRed(b: Base): SVGSVGElement {
   for (const e of enlaces) {
     const activo = !sel || e.de.id === sel || e.a.id === sel;
     kids.push(h('path', {
-      d: cinta(COL_X[e.de.col] + 110, e.y0, COL_X[e.a.col], e.y1, Math.max(4, (e.de.alto * e.kg) / (e.de.kg || 1))),
+      d: cinta(COL_X[e.de.col] + ANCHO[e.de.col], e.y0, COL_X[e.a.col], e.y1, Math.max(4, (e.de.alto * e.kg) / (e.de.kg || 1))),
       class: `cinta ${activo ? '' : 'is-off'} ${e.tono ? `cinta--${e.tono}` : ''}`,
     }, h('title', { text: `${e.de.etiqueta} → ${e.a.etiqueta}: ${entero(e.kg)} kg` })));
   }
@@ -154,8 +156,8 @@ function dibujarRed(b: Base): SVGSVGElement {
       class: `rednodo ${activo ? '' : 'is-off'} ${n.tono ? `rednodo--${n.tono}` : ''}`,
       onClick: () => store.set({ nodoSel: sel === n.id ? null : n.id }),
     },
-      h('rect', { x: COL_X[n.col], y: n.y, width: 110, height: n.alto, rx: 4, class: 'rednodo-r' }),
-      h('text', { x: COL_X[n.col] + 6, y: n.y + Math.min(14, n.alto / 2 + 4), class: 'rednodo-t', text: corto(n.etiqueta) }),
+      h('rect', { x: COL_X[n.col], y: n.y, width: ANCHO[n.col], height: n.alto, rx: 4, class: 'rednodo-r' }),
+      h('text', { x: COL_X[n.col] + 6, y: n.y + Math.min(14, n.alto / 2 + 4), class: 'rednodo-t', text: corto(n.etiqueta, n.col === 0 ? 22 : 15) }),
       n.alto > 26 && h('text', { x: COL_X[n.col] + 6, y: n.y + 28, class: 'rednodo-s', text: `${entero(n.kg)} kg` }),
       h('title', { text: `${n.etiqueta} · ${n.sub} · ${entero(n.kg)} kg` }),
     ));
@@ -210,8 +212,8 @@ export function vistaCadena(b: Base): HTMLElement {
   return grid(
     h('section', { class: 'card card--mapa' },
       h('header', { class: 'card-h' },
-        h('h2', { text: 'La cadena, etapa por etapa' }),
-        h('p', { class: 'card-sub', text: 'El ancho de cada cinta es el volumen real de la base. Toque un nodo para aislar su flujo.' }),
+        h('h2', { text: 'Cadena de suministro' }),
+        h('p', { class: 'card-sub', text: 'El ancho de cada cinta indica los kilos. Toque un bloque para ver solo su recorrido.' }),
       ),
       slot(() => dibujarRed(b)),
       h('p', { class: 'leyenda' },
@@ -219,9 +221,9 @@ export function vistaCadena(b: Base): HTMLElement {
         pill(`${entero(kgApto)} kg aptos`, 'ok'),
         pill(`${entero(kgNo)} kg retenidos`, 'bad'),
       ),
-      nota('«No apto» no significa que el café sea malo: significa que el expediente todavía no sostiene una declaración. La mayoría se resuelve con un papel o una firma, no cambiando de proveedor.'),
+      nota('«No apto»: al expediente le faltan requisitos para declarar el lote. No se refiere a la calidad del café.'),
     ),
-    card('Trazabilidad de un lote', 'Las cuatro etapas por las que pasa el café, con las fechas y los responsables que exige el EUDR.',
+    card('Trazabilidad de un lote', 'Fechas y responsables de cada etapa.',
       slot(() => seguimientoLote(b)),
     ),
   );

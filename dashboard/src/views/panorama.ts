@@ -1,6 +1,6 @@
 import { h } from '../lib/dom';
 import { slot } from '../lib/reactive';
-import { card, grid, kpi, nota, pill } from '../lib/ui';
+import { card, grid, kpi, nota } from '../lib/ui';
 import { cop, entero, horas, num } from '../lib/fmt';
 import { evaluarSecado } from '../domain/gravimet';
 import { EXPLICACION_BANDA, diagnosticar } from '../domain/psychro';
@@ -52,17 +52,17 @@ function tarjetasKpi(b: Base): HTMLElement {
 
   return h('div', { class: 'kpis' },
     kpi('Lotes aptos para la UE', `${comp}/${total}`,
-      `${Math.round((comp / total) * 100)} % del expediente en regla`, comp / total > 0.6 ? 'ok' : 'warn'),
-    kpi('Volumen en la base', `${entero(b.meta().kgTotal / 1000)} t`,
+      `${Math.round((comp / total) * 100)} % de los lotes en regla`, comp / total > 0.6 ? 'ok' : 'warn'),
+    kpi('Café registrado', `${entero(b.meta().kgTotal / 1000)} t`,
       `${b.meta().nFincas} fincas · ${b.acopios.length} acopios · ${b.zonas.length} departamentos`, 'neutro'),
     kpi('Humedad en secado', `${num(sec.humedad * 100)} %`,
       sec.estado === 'listo' ? 'en rango 10–12 %' : sec.estado === 'sobreseco' ? 'regalando peso' : `faltan ${num(sec.diasRestantes)} días de sol`,
       sec.estado === 'listo' ? 'ok' : sec.estado === 'sobreseco' ? 'bad' : 'warn'),
     kpi('Bodega', bod.ventilar ? 'ABRIR' : 'CERRAR',
-      `${num(s.dentro.rh, 0)} % HR · tiende a ${num(bod.humedadEquilibrio)} %`,
+      `Simulación · ${num(s.dentro.rh, 0)} % HR · tiende a ${num(bod.humedadEquilibrio)} %`,
       bod.banda === 'segura' ? 'ok' : bod.banda === 'critica' ? 'bad' : 'warn'),
-    kpi('Tiempo devuelto a Hernán', ahorro > 0 ? horas(ahorro) : '—',
-      `${s.cursorEntrega} entregas en la ventanilla`, 'neutro'),
+    kpi('Tiempo ahorrado en ventanilla', ahorro > 0 ? horas(ahorro) : '—',
+      `Simulación · ${s.cursorEntrega} ${s.cursorEntrega === 1 ? 'entrega' : 'entregas'} en la ventanilla`, 'neutro'),
   );
 }
 
@@ -75,7 +75,7 @@ export function vistaPanorama(b: Base, irA: (v: Vista) => void): HTMLElement {
       h('div', {},
         h('p', { class: 'hero-eyebrow', text: `${b.meta().nFincas} fincas · 10 departamentos · trazabilidad activa` }),
         h('h1', { class: 'hero-h', text: 'Trazabilidad de café que funciona sin señal' }),
-        h('p', { class: 'hero-p', text: 'Tres instrumentos en la finca y el acopio, y el expediente EUDR que sale de ellos. Toda la aritmética es real: Gravimet de Cenicafé, ecuación de Magnus y el precio interno de la FNC.' }),
+        h('p', { class: 'hero-p', text: 'Controle el secado, la bodega y la recepción del café, y prepare el expediente EUDR de cada lote.' }),
       ),
       h('div', { class: 'hero-count' },
         h('strong', { text: String(dias) }),
@@ -100,23 +100,15 @@ export function vistaPanorama(b: Base, irA: (v: Vista) => void): HTMLElement {
 
     card('Por dónde empezar', null,
       h('div', { class: 'tri' },
-        h('article', { class: 'tri-i', onClick: () => irA('expediente') },
-          h('span', { class: 'tri-n', text: '01' }),
-          h('h3', { text: 'Mapa por polígonos' }),
-          h('p', { text: 'Entre a un departamento, vea sus centros de acopio, baje a los caficultores asociados y abra el polígono real de cada predio con sus mensajes.' }),
-          pill('drill-down en 4 niveles', 'ok'),
-        ),
         h('article', { class: 'tri-i', onClick: () => irA('cadena') },
-          h('span', { class: 'tri-n', text: '02' }),
-          h('h3', { text: 'La cadena etapa por etapa' }),
-          h('p', { text: `Las ${entero(kgTotal)} kg de la base fluyendo de los caficultores al acopio y de ahí a la exportadora, con el ancho proporcional al volumen.` }),
-          pill('red de flujo', 'ok'),
+          h('span', { class: 'tri-n', text: '01' }),
+          h('h3', { text: 'Cadena de suministro' }),
+          h('p', { text: `Siga los ${entero(kgTotal)} kg desde los caficultores hasta la exportadora.` }),
         ),
         h('article', { class: 'tri-i', onClick: () => irA('expediente') },
-          h('span', { class: 'tri-n', text: '03' }),
-          h('h3', { text: 'El expediente de Laura' }),
-          h('p', { text: 'Los 75 lotes con su estado, los motivos que los bloquean ordenados por kilos, y el GeoJSON listo para el Sistema de Información.' }),
-          pill('EUDR', 'ok'),
+          h('span', { class: 'tri-n', text: '02' }),
+          h('h3', { text: 'Expediente EUDR' }),
+          h('p', { text: `Revise el estado de los ${b.raw.expediente.length} lotes y los motivos de retención, y copie el GeoJSON para el Sistema de Información.` }),
         ),
       ),
       nota(b.meta().aviso),

@@ -61,7 +61,7 @@ function lectura(): HTMLElement {
       fila('Objetivo de la canastilla', `${num(OBJETIVO_G, 0)} g`),
       fila('Objetivo del lote completo', `${num(r.loteObjetivoKg)} kg`),
       fila('Peso actual del lote', `${num(r.loteKg)} kg`),
-      fila('Materia seca', `${num(r.materiaSecaKg)} kg`, 'no cambia nunca'),
+      fila('Materia seca', `${num(r.materiaSecaKg)} kg`),
       fila('Días de sol que faltan', r.muestraG <= OBJETIVO_G ? 'ninguno, ya pasó' : num(r.diasRestantes)),
     ),
   );
@@ -88,7 +88,7 @@ export function vistaSecado(): HTMLElement {
 
   return grid(
     card('Método Gravimet, de Cenicafé',
-      'Aparte 200 g de pergamino lavado en una canastilla, séquela junto al lote y pésela cada día. La materia seca no cambia: solo sale agua, así que el peso es la humedad.',
+      'Aparte 200 g de pergamino lavado en una canastilla, séquela junto al lote y pésela cada día. El peso indica cuánta humedad queda.',
       h('div', { class: 'stack' },
         slider({
           label: 'Pergamino lavado del lote', min: 20, max: 400, step: 5,
@@ -113,25 +113,25 @@ export function vistaSecado(): HTMLElement {
         boton('↺ Volver al día 0', () => fijarMuestra(MUESTRA_G), { class: 'btn btn--ghost' }),
         boton('Llevar al 11 %', () => fijarMuestra(muestraParaHumedad(0.11)), { class: 'btn btn--ghost' }),
       ),
-      callout('Referencia de Cenicafé:',
-        'con muestra de 200 g, entre 104 y 106 g el café está entre 10 % y 12 %, el rango exigido para comercializar. Contra el método de estufa el error va de 0,09 % a 1,92 %.'),
+      callout('Meta:',
+        'entre 104 y 106 g (10 % a 12 % de humedad, rango de comercialización). Fuente: Cenicafé.'),
     ),
 
-    card('Lo que ve Rosa Elvira', 'Una sola pantalla, un solo número. Sin porcentajes que haya que interpretar.',
+    card('Estado del secado', null,
       slot(lectura),
       h('h3', { class: 'h3', text: 'Curva de secado' }),
       zonaArrastrable(grafico, (f) => fijarMuestra(pesoEnDia(fraccionAEjeX(f, [0, 12])))),
-      nota('La banda verde es 104–106 g. Pasarse hacia abajo no da ninguna alarma hoy: por eso una de cada cuatro fincas regala peso.'),
+      nota('Banda verde: meta de 104 a 106 g. Por debajo de 104 g, el café está sobresecado y pierde peso.'),
     ),
 
-    card('Cuánto cuesta no medir',
-      'Tabla de Cenicafé: kilos de pergamino seco perdidos por cada 1.000 kg de café lavado, según dónde se detenga el secado, tomando el 11 % como referencia.',
+    card('Pérdida por sobresecado',
+      'Kilos de pergamino seco que se pierden por cada 1.000 kg de café lavado, frente a una humedad final de 11 %. Fuente: Cenicafé.',
       tabla(['Si para en', 'Pierde', 'Al precio del 25-nov-2026'],
         PERDIDA_POR_TONELADA_LAVADO.map((p) => [`${num(p.humedad)} %`, `${num(p.kg)} kg`, cop(p.kg * PRECIO_KG)])),
-      nota('Mil kilos de lavado son unas 4 cargas de pergamino seco. Un acopio que recibe café sistemáticamente sobresecado está comprando aire perdido.'),
+      nota('1.000 kg de café lavado equivalen a unas 4 cargas de pergamino seco.'),
     ),
 
-    card('Por qué funciona sin red', null,
+    card('Equipo necesario', null,
       h('div', { class: 'rows' },
         fila('Instrumento', 'balanza digital de 0,1 g', 'COP 40.000 a 90.000'),
         fila('Conexión necesaria', 'ninguna'),
@@ -139,8 +139,7 @@ export function vistaSecado(): HTMLElement {
         fila('Humedad del pergamino lavado', pct(0.5328)),
         fila('Error contra el método de estufa', '0,09 % a 1,92 %'),
       ),
-      callout('Comparación:',
-        'un medidor electrónico calibrado para pergamino cuesta entre COP 1,5 y 3 millones. La balanza no se descalibra sola, no tiene batería propietaria, no se daña con el polvo y no pide señal.'),
+      nota('Un medidor electrónico para pergamino cuesta entre COP 1,5 y 3 millones. La balanza digital es más económica y no necesita señal.'),
     ),
   );
 }

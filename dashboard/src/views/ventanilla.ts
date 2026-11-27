@@ -1,6 +1,6 @@
 import { h, mount } from '../lib/dom';
 import { boton, card, fila, kpi, pill } from '../lib/ui';
-import { cop, num } from '../lib/fmt';
+import { cop, entero, num } from '../lib/fmt';
 import { clases, destinos, leer, guardar, fechaCO, fechaLocal, normalizar } from '../data/operacion';
 import type { Consolidado, Entrega } from '../data/operacion';
 import type { Base } from '../data/db';
@@ -13,7 +13,11 @@ import { store } from '../state';
 const secciones = ['Resumen', 'Recepción', 'Pruebas de horno', 'Requieren atención', 'Consolidación', 'Pagos', 'Bodega', 'Fincas asociadas'] as const;
 const peso = (e: Entrega[]) => e.reduce((s, r) => s + r.kg, 0);
 const dinero = (n: number | null | undefined) => n == null ? '—' : cop(n);
-const fecha = (f?: string) => f ? fechaCO(f) : '—';
+const zona = 'America/Bogota';
+const soloFecha = new Intl.DateTimeFormat('es-CO', { dateStyle: 'short', timeZone: zona });
+const horaBogota = new Intl.DateTimeFormat('en-GB', { hour: '2-digit', minute: '2-digit', hourCycle: 'h23', timeZone: zona });
+/** Una hora a medianoche exacta es una fecha sin hora informada: no se muestra «12:00 a. m.». */
+const fecha = (f?: string) => !f ? '—' : horaBogota.format(new Date(f)) === '00:00' ? soloFecha.format(new Date(f)) : fechaCO(f);
 const fechaRecepcion = (e: Entrega) => e.horaRecepcionInformada === false
   ? `${new Intl.DateTimeFormat('es-CO', { dateStyle: 'short', timeZone: 'America/Bogota' }).format(new Date(e.fecha))} · hora sin informar`
   : fecha(e.fecha);
@@ -24,8 +28,8 @@ const tono = { Aceptado: 'ok', Retenido: 'warn', Rechazado: 'bad', 'Sin evaluar'
 function grafico(titulo: string, series: [string, number][], unidad: string, max = Math.max(1, ...series.map(([, v]) => v))): HTMLElement {
   return h('details', { class: 'op-grafico', open: true }, h('summary', { text: titulo }),
     series.length ? h('ul', {}, ...series.map(([nombre, valor]) => h('li', {},
-      h('span', { text: nombre }), h('meter', { min: 0, max, value: valor, 'aria-label': `${nombre}: ${num(valor)} ${unidad}` }),
-      h('span', { text: `${num(valor)} ${unidad}` }),
+      h('span', { text: nombre }), h('meter', { min: 0, max, value: valor, 'aria-label': `${nombre}: ${unidad === 'pagos' ? entero(valor) : num(valor)} ${unidad}` }),
+      h('span', { text: `${unidad === 'pagos' ? entero(valor) : num(valor)} ${unidad}` }),
     ))) : h('p', { text: 'Sin datos para el filtro.' }),
   );
 }
@@ -154,7 +158,7 @@ export function ventanilla(base: Base, coopId?: string): HTMLElement {
       ));
     } else if (seleccion === 'Recepción') {
       mount(contenido, datosDetalle || null, card('Historial de recepción', `${registros.length} entregas con los filtros actuales`,
-        tablaOperacion(['Entrega', 'Identificación', 'Productor', 'Finca', 'ID finca', 'Recepción (Colombia)', 'kg', 'Humedad', 'Método de medición', 'Muestra', 'Defectos', 'Lote', 'Calidad confirmada', 'Evaluación orientativa', 'Destino confirmado', 'Destino recomendado', 'Importe informado (COP)', 'Monto pagado (COP)', 'Método', 'Estado del pago', 'Procedencia', 'Sincronización', 'Datos'],
+        tablaOperacion(['Entrega', 'Identificación', 'Productor', 'Finca', 'ID finca', 'Recepción (Colombia)', 'kg', 'Humedad', 'Método de medición', 'Muestra', 'Defectos', 'Lote', 'Calidad confirmada', 'Evaluación preliminar', 'Destino confirmado', 'Destino recomendado', 'Importe informado (COP)', 'Monto pagado (COP)', 'Método', 'Estado del pago', 'Procedencia', 'Sincronización', 'Datos'],
           registros.map((e) => {
             const recomendacion = clasificar(e), p = pagoDe(e);
             return [controlDetalle(e), e.productorId || '—', e.productor, e.finca || '—', fincaId(e) || '—', fechaRecepcion(e), num(e.kg),

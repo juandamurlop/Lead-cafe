@@ -100,7 +100,7 @@ export function diagnosticar(dentro: Aire, fuera: Aire): DiagnosticoBodega {
 /** Texto corto de consecuencia por banda. */
 export const EXPLICACION_BANDA: Record<BandaRiesgo, string> = {
   seca: 'El café baja del 10 % y pierde peso que el acopio ya pagó.',
-  segura: 'Zona recomendada por Cenicafé. El grano se mantiene en rango y se puede esperar mejor precio.',
+  segura: 'Rango recomendado por Cenicafé. El grano se mantiene estable.',
   alta: 'El grano sube sobre 12 %. El deterioro de taza arranca y no se ve por fuera.',
   critica: 'Riesgo de moho y ocratoxina. Hay que despachar o resecar los lotes más húmedos.',
 };

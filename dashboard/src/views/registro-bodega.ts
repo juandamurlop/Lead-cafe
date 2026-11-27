@@ -59,7 +59,7 @@ export function registroBodega(coopId?: string, alCambiarZona?: (zona: string) =
   }
   filtro.addEventListener('change', mostrar);
   mostrar();
-  const historial = card('Historial de bodega', 'Lecturas ambientales puntuales. La humedad ambiental y la humedad interna del grano se reportan por separado.', filtro, cuerpo);
+  const historial = card('Historial de bodega', 'Registro de temperatura y humedad ambiental.', filtro, cuerpo);
   historial.classList.add('card--ancho');
   return historial;
 }

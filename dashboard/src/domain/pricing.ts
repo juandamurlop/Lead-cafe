@@ -9,6 +9,7 @@
  * la suya. Se expone aquí para que sea discutible, no para fingir que es
  * oficial.
  */
+import { num } from '../lib/fmt';
 import {
   FR_REFERENCIA, H_MAX, KG_POR_CARGA, PRECIO_CARGA_FR94,
 } from './constants';
@@ -66,7 +67,7 @@ export function liquidar(e: EntradaLiquidacion): Liquidacion {
       lineas: [],
       total: 0,
       rechazado: true,
-      motivoRechazo: `Humedad de ${(e.humedad * 100).toFixed(1)} %: por encima de 14 % no se recibe.`,
+      motivoRechazo: `Humedad de ${num(e.humedad * 100)} %: por encima de 14 % no se recibe.`,
       porKg: 0,
     };
   }
@@ -77,7 +78,7 @@ export function liquidar(e: EntradaLiquidacion): Liquidacion {
 
   const lineas: LineaLiquidacion[] = [
     {
-      concepto: `Precio base · ${cargas.toFixed(2)} cargas a FR ${FR_REFERENCIA}`,
+      concepto: `Precio base · ${num(cargas, 2)} cargas a FR ${FR_REFERENCIA}`,
       valor: base,
     },
     {
@@ -89,7 +90,7 @@ export function liquidar(e: EntradaLiquidacion): Liquidacion {
 
   if (fraccion > 0) {
     lineas.push({
-      concepto: `Descuento por humedad ${(e.humedad * 100).toFixed(1)} %`,
+      concepto: `Descuento por humedad ${num(e.humedad * 100)} %`,
       valor: descuento,
       nota: 'Regla ilustrativa de la cooperativa',
     });
@@ -100,7 +101,7 @@ export function liquidar(e: EntradaLiquidacion): Liquidacion {
     valor: premio,
     destacar: true,
     nota: e.trazado
-      ? 'Línea separada y auditable: así se verifica que llegó al caficultor'
+      ? 'Se muestra aparte del precio base'
       : 'Sin finca verificada no hay premio',
   });
 

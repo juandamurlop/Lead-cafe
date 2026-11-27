@@ -114,7 +114,7 @@ export function pruebaDe(e: Entrega): PruebaHorno | undefined {
       final: { gramos: 21.5, muestraId: 'ENT-010-M1', neto: true },
       inicio: new Date(Date.parse(e.fecha) + 9 * 3600000).toISOString(),
       fin: new Date(Date.parse(e.fecha) + 13 * 3600000).toISOString(),
-      observaciones: 'Pesos netos de ejemplo. Requiere evaluación.',
+      observaciones: 'Requiere evaluación.',
       fuente: { canal: 'simulación', ficticio: true },
     };
     return { entregaId: e.id, lote: e.lote, estado: 'Pendiente de prueba de horno', fuente: { canal: 'Excel', ficticio: e.ficticio } };
@@ -156,11 +156,11 @@ export function pagoDe(e: Entrega): PagoReportado {
     estado, descuentos: null, premio: null,
   };
 }
-export function sincronizacion(e: Entrega): EntregaReportada['estado'] | 'Disponible localmente' {
+export function sincronizacion(e: Entrega): EntregaReportada['estado'] | 'Guardado en este equipo' {
   if (!e.ficticio && e.fuente?.confirmadoEn && Number.isFinite(Date.parse(e.fuente.confirmadoEn))) return 'Confirmado por el servidor';
   if (e.sincronizacion === 'Pendiente de sincronización') return e.sincronizacion;
   if (e.estadoReporte && e.estadoReporte !== 'Confirmado por el servidor' &&
     (e.estadoReporte !== 'Información recibida' || (!e.ficticio && e.fuente?.canal === 'WhatsApp' && e.fuente.externo))) return e.estadoReporte;
   if (e.humedad === null || !e.productorId || !(e.fincaId || e.celdas?.fincaId)) return 'Información incompleta';
-  return 'Disponible localmente';
+  return 'Guardado en este equipo';
 }

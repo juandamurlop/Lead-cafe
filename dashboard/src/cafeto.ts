@@ -103,7 +103,7 @@ export function montarCafeto(root: HTMLElement, abrirCumplimiento: () => void): 
     const s = store.get();
     limpiarSlots();
     if (!base) {
-      mount(root, s.error ? pantallaCarga(s.error, true) : pantallaCarga('Cargando la base de fincas…'));
+      mount(root, s.error ? pantallaCarga(s.error, true) : pantallaCarga('Cargando fincas…'));
       return;
     }
 

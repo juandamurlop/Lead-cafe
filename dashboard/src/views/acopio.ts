@@ -14,7 +14,7 @@ const SEG_CAFETO_BASE = 190;
 const SEG_MEDIR_HUMEDAD = 45;
 
 const CHECK: Record<Red, { marca: string; clase: string; texto: string }> = {
-  0: { marca: '○', clase: 'c1', texto: 'escenario sin conectividad' },
+  0: { marca: '○', clase: 'c1', texto: 'Sin conexión' },
   1: { marca: '○', clase: 'c1', texto: 'escenario de envío por SMS' },
   2: { marca: '○', clase: 'c1', texto: 'escenario de envío de cola comprimida' },
   3: { marca: '○', clase: 'c1', texto: 'escenario de envío con WiFi del acopio' },
@@ -40,21 +40,10 @@ function cola(b: Base): EntregaViva[] {
   return out;
 }
 
-function bytesDemo(seq: number): string {
-  let x = (seq * 2654435761) >>> 0;
-  const out: string[] = [];
-  for (let i = 0; i < 48; i++) {
-    x = (x * 1664525 + 1013904223) >>> 0;
-    out.push(((x >>> 16) & 255).toString(16).padStart(2, '0'));
-  }
-  return out.join(' ');
-}
-
 function ventanilla(b: Base): HTMLElement {
   const s = store.get();
   const q = cola(b);
   const siguiente = q[s.cursorEntrega % q.length];
-  const ultima = s.cursorEntrega > 0 ? q[(s.cursorEntrega - 1) % q.length] : null;
   const ahorro = s.segViejo - s.segNuevo;
 
   return h('div', {},
@@ -67,12 +56,11 @@ function ventanilla(b: Base): HTMLElement {
     h('div', { class: 'rows' },
       fila('Con cuaderno y efectivo', mmss(s.segViejo)),
       fila('Con Cafeto', mmss(s.segNuevo)),
-      fila('Tiempo devuelto a Hernán', ahorro > 0 ? horas(ahorro) : '0 min', 'proyectado a 120 entregas/día: ~1 h'),
+      fila('Tiempo ahorrado en ventanilla', ahorro > 0 ? horas(ahorro) : '0 min', 'proyectado a 120 entregas/día: ~1 h'),
     ),
-    nota('Los tiempos con cuaderno son estimación nuestra. El primer trabajo del piloto es cronometrar la ventanilla real durante una semana.'),
-    h('h3', { class: 'h3', text: 'Ejemplo de registro para SMS' }),
-    h('pre', { class: 'bytes', text: ultima ? bytesDemo(s.cursorEntrega) : '—' }),
-    nota('48 bytes: finca, secuencia, fecha, peso, humedad, delta de GPS y firma. En base32 son 77 caracteres: cabe en un solo SMS de 160.'),
+    nota('Tiempos con cuaderno: estimados.'),
+    h('h3', { class: 'h3', text: 'Envío por SMS' }),
+    nota('Cada registro cabe en un solo SMS.'),
   );
 }
 
@@ -80,7 +68,7 @@ function liquidacion(b: Base): HTMLElement {
   const s = store.get();
   const q = cola(b);
   const ultima = s.cursorEntrega > 0 ? q[(s.cursorEntrega - 1) % q.length] : null;
-  if (!ultima) return nota('Simula una entrega para consultar el desglose.');
+  if (!ultima) return nota('Simule una entrega para ver el detalle.');
 
   const liq = liquidar({
     kg: ultima.kg, factor: 94, humedad: ultima.humedad,
@@ -112,7 +100,7 @@ function loteAbierto(): HTMLElement {
     readout(
       `${entero(kg)} <small>kg</small>`,
       s.loteCerrado ? 'Cerrado y conciliado' : 'Lote abierto',
-      `${predios} predios declarados · ${s.rechazadas} entregas desviadas a la pila sin trazar`,
+      `${predios} ${predios === 1 ? 'predio declarado' : 'predios declarados'} · ${s.rechazadas} ${s.rechazadas === 1 ? 'entrega en la pila sin trazabilidad' : 'entregas en la pila sin trazabilidad'}`,
       s.loteCerrado ? 'ok' : 'neutro',
     ),
     s.entregas.length
@@ -167,7 +155,7 @@ export function vistaAcopio(b: Base): HTMLElement {
 
   return grid(
     operacionHernan(b),
-    card('Atención en ventanilla', 'Registro de entregas por finca para comparar la atención y estimar la liquidación.',
+    card('Atención en ventanilla', 'Registre cada entrega y calcule la liquidación.',
       h('div', { class: 'btnrow' },
         boton('Simular siguiente entrega', simularEntrega),
         boton('Cerrar el lote', () => {
@@ -190,14 +178,11 @@ export function vistaAcopio(b: Base): HTMLElement {
         value: store.get().premioPorCarga, sufijo: ' COP',
         onInput: (v) => store.set({ premioPorCarga: v }),
       }),
-      callout('Por qué va como línea separada:',
-        'un premio mezclado en el precio no se puede verificar, y la experiencia de las certificaciones sugiere que a menudo no llega abajo.'),
     ),
 
     card('Lote de acopio abierto', 'Entregas agrupadas en el lote actual.',
       slot(loteAbierto),
-      callout('Separación física por estatus, no por finca:',
-        'el EUDR no permite mezclar café libre de deforestación con café de origen desconocido. Dos pilas, no trescientas.'),
+      nota('No mezcle café libre de deforestación con café de origen desconocido. Guárdelos en pilas separadas.'),
     ),
 
     card('Estado de conectividad', 'Opciones de envío según la señal disponible.',

@@ -58,7 +58,7 @@ export interface Estado {
 }
 
 export const RED_TEXTO: Record<Red, { nombre: string; detalle: string }> = {
-  0: { nombre: 'Sin señal', detalle: 'Todo sigue funcionando. Nada espera al servidor.' },
+  0: { nombre: 'Sin señal', detalle: 'Puede seguir registrando sin conexión.' },
   1: { nombre: 'Una raya', detalle: 'Hay voz y SMS: cada lote sale en un mensaje de 160 caracteres.' },
   2: { nombre: '2G intermitente', detalle: 'Escenario de envío de la cola en un solo viaje de ida y vuelta.' },
   3: { nombre: 'WiFi del acopio', detalle: 'Escenario para enviar fotos y audios y tramitar pagos.' },

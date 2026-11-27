@@ -34,22 +34,24 @@ export function fila(k: string, v: string, nota?: string): HTMLElement {
   return h('div', { class: 'row' },
     h('span', { class: 'row-k', text: k },
       nota ? h('em', { class: 'row-n', text: nota }) : null as never),
-    h('span', { class: 'row-v', text: v }),
+    v ? h('span', { class: 'row-v', text: v }) : null as never,
   );
 }
+
+const valorSlider = (v: number, sufijo = ''): string => `${v.toLocaleString('es-CO', { maximumFractionDigits: 2 })}${sufijo}`;
 
 export function slider(opts: {
   label: string; min: number; max: number; step: number; value: number;
   sufijo?: string; id?: string; onInput: (v: number) => void;
 }): HTMLElement {
-  const out = h('output', { class: 'sl-out', text: `${opts.value}${opts.sufijo ?? ''}` });
+  const out = h('output', { class: 'sl-out', text: valorSlider(opts.value, opts.sufijo) });
   const input = h('input', {
     type: 'range', min: opts.min, max: opts.max, step: opts.step, value: opts.value,
     class: 'sl-input', 'aria-label': opts.label, id: opts.id,
     'data-sufijo': opts.sufijo ?? '',
     onInput: (e: Event) => {
       const v = Number((e.target as HTMLInputElement).value);
-      out.textContent = `${v}${opts.sufijo ?? ''}`;
+      out.textContent = valorSlider(v, opts.sufijo);
       opts.onInput(v);
     },
   });
@@ -65,7 +67,7 @@ export function fijarSlider(id: string, valor: number): void {
   if (!el) return;
   el.value = String(valor);
   const out = el.parentElement?.querySelector('.sl-out');
-  if (out) out.textContent = `${Math.round(valor * 10) / 10}${el.dataset.sufijo ?? ''}`;
+  if (out) out.textContent = valorSlider(Math.round(valor * 10) / 10, el.dataset.sufijo ?? '');
 }
 
 export function boton(texto: string, onClick: () => void, attrs: Attrs = {}): HTMLElement {

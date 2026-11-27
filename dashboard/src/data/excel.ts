@@ -18,7 +18,8 @@ const aliases: Record<string, string[]> = {
   Fecha: ['Fecha de recepción', 'Fecha recepción', 'Fecha entrega', 'Fecha de entrega'],
   'Peso (kg)': ['Peso entregado', 'Peso entregado (kg)', 'Peso recibido (kg)', 'Kg'],
   'Humedad (%)': ['Humedad', 'Humedad medida', 'Humedad medida (%)'],
-  'Resultado de muestra': ['Resultados de la muestra', 'Resultado muestra', 'Resultado de la muestra', 'Muestra', 'Defectos / muestra'],
+  'Resultado de muestra': ['Resultados de la muestra', 'Resultado muestra', 'Resultado de la muestra', 'Muestra'],
+  Defectos: ['Defectos / muestra'],
   'Número de lote': ['Lote', 'Lote ID', 'Número lote', 'Lote consolidado', 'Lote origen', 'Código de lote'],
   'ID productor': ['ID caficultor (nroId)'],
   Clasificación: ['Estado calidad'],
@@ -148,7 +149,9 @@ export async function importarLibro(libro: Workbook, demo = false, base?: Base):
             const externo = t('ID externo') || undefined;
             if (actual.entregas.some((e) => e.id === id || (externo && e.externo === externo))) return;
             if (actual.consolidados.some((c) => normalizar(c.lote) === normalizar(lote))) throw new Error('Ese número pertenece a un lote consolidado.');
-            const [clase, destino] = recomendar(humedad, muestra, defectos, actual.rangos);
+            // «Defectos / muestra» es un texto combinado: se evalúa como antes (resultado de muestra) aunque se muestre en Defectos.
+            const combinado = !muestra && defectos && !encabezados.some((h) => clave(h) === clave('Defectos'));
+            const [clase, destino] = combinado ? recomendar(humedad, defectos, '', actual.rangos) : recomendar(humedad, muestra, defectos, actual.rangos);
             const pago = numero(v('Pago (COP)')), metodo = t('Método de pago');
             const formatoFecha = fila.getCell(columna('Fecha') + 1).numFmt;
             const fechaOrigen = v('Fecha');

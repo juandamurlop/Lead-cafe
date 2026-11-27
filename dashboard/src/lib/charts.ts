@@ -113,7 +113,7 @@ export function barras(items: BarraComparada[], max: number, unidad: string): SV
     kids.push(h('rect', { x: pl, y, width: w, height: 22, rx: 6, fill: it.color, class: 'ch-bfill' }));
     kids.push(h('text', {
       x: pl + w + 10, y: y + 16, class: 'ch-bval',
-      text: `${it.valor.toFixed(1)} ${unidad}`,
+      text: `${it.valor.toLocaleString('es-CO', { minimumFractionDigits: 1, maximumFractionDigits: 1 })} ${unidad}`,
     }));
   });
   return h('svg', { viewBox: `0 0 ${W} ${H}`, class: 'chart', role: 'img' }, ...kids) as unknown as SVGSVGElement;
@@ -161,7 +161,7 @@ export function anillo(pct: number, etiqueta: string): SVGSVGElement {
       'stroke-dasharray': C.toFixed(1), 'stroke-dashoffset': off.toFixed(1),
       transform: 'rotate(-90 70 70)',
     }),
-    h('text', { x: 70, y: 72, class: 'ring-num', 'text-anchor': 'middle', text: `${Math.round(pct)}%` }),
+    h('text', { x: 70, y: 72, class: 'ring-num', 'text-anchor': 'middle', text: `${Math.round(pct)} %` }),
     h('text', { x: 70, y: 92, class: 'ring-lbl', 'text-anchor': 'middle', text: etiqueta }),
   ) as unknown as SVGSVGElement;
 }

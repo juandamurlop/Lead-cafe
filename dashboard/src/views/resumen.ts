@@ -4,10 +4,10 @@ import { boton, card, kpi } from '../lib/ui';
 import { fetchSummary } from '../api/client';
 
 export function vistaResumen(): HTMLElement {
-  const contenido = h('div', { role: 'status', text: 'Consultando el resumen de Lote Claro…' });
+  const contenido = h('div', { role: 'status', text: 'Cargando el resumen…' });
   const actualizar = async () => {
     recargar.toggleAttribute('disabled', true);
-    mount(contenido, 'Consultando el resumen de Lote Claro…');
+    mount(contenido, 'Cargando el resumen…');
     try {
       const resumen = await fetchSummary();
       if (!resumen || ![resumen.farms, resumen.lots, resumen.events].every((value) => Number.isSafeInteger(value) && value >= 0)) {
@@ -16,7 +16,7 @@ export function vistaResumen(): HTMLElement {
       mount(contenido, h('div', { class: 'kpis' },
         kpi('Fincas registradas', entero(resumen.farms)),
         kpi('Lotes registrados', entero(resumen.lots)),
-        kpi('Eventos EPCIS', entero(resumen.events)),
+        kpi('Movimientos registrados', entero(resumen.events)),
       ));
     } catch {
       mount(contenido, 'Resumen de Lote Claro no disponible.');
@@ -27,7 +27,7 @@ export function vistaResumen(): HTMLElement {
 
   const recargar = boton('Actualizar resumen', actualizar);
   void actualizar();
-  return card('Registros de Lote Claro', 'Totales de PostgreSQL',
+  return card('Resumen de registros', 'Fincas, lotes y movimientos registrados',
     contenido,
     recargar,
   );

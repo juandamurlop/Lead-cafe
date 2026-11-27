@@ -62,7 +62,7 @@ function tablaLotes(b: Base): HTMLElement {
   return h('div', { class: 'tblwrap' },
     h('table', { class: 'tbl tbl--datos' },
       h('thead', {}, h('tr', {},
-        ...['Lote', 'Finca', 'Titular', 'Acopio', 'kg', 'Sat', 'Estado', 'Motivos'].map((c) => h('th', { text: c })),
+        ...['Lote', 'Finca', 'Titular', 'Acopio', 'kg', 'Satélite', 'Estado', 'Motivos'].map((c) => h('th', { text: c })),
       )),
       h('tbody', {}, ...filas.map((e) => {
         const f = b.fincaPorId.get(e.fincaId);
@@ -130,27 +130,26 @@ export function vistaExpediente(b: Base): HTMLElement {
   return grid(
     h('section', { class: 'card card--ancho' },
       h('header', { class: 'card-h' },
-        h('h2', { text: 'Expediente EUDR · lo que Laura tiene que sostener' }),
-        h('p', { class: 'card-sub', text: 'Un lote no se declara porque el café sea bueno, sino porque el expediente aguanta una auditoría. Toque una fila para ver el predio en el mapa.' }),
+        h('h2', { text: 'Expediente EUDR' }),
+        h('p', { class: 'card-sub', text: 'Revise el estado de cada lote.' }),
       ),
       slot(() => cabecera(b)),
       slot(() => tablaLotes(b)),
     ),
 
-    card('Qué está bloqueando el volumen', 'Ordenado por kilos afectados, no por número de lotes: así se ve qué vale la pena arreglar primero.',
+    card('Motivos de retención', 'Ordenados por kilos afectados.',
       h('div', { class: 'ring-wrap' },
         anillo((comp / total) * 100, 'lotes aptos'),
         h('div', { class: 'ring-side' },
-          h('div', { class: 'mini' }, h('strong', { text: String(b.meta().nFincas) }), h('span', { text: 'fincas en la base' })),
+          h('div', { class: 'mini' }, h('strong', { text: String(b.meta().nFincas) }), h('span', { text: 'fincas' })),
           h('div', { class: 'mini' }, h('strong', { text: String(b.acopios.length) }), h('span', { text: 'centros de acopio' })),
           h('div', { class: 'mini' }, h('strong', { text: String(b.zonas.length) }), h('span', { text: 'departamentos' })),
         ),
       ),
       barraMotivos(b),
-      nota('La mayoría de estos motivos son administrativos: una firma de consentimiento, una declaración de cooperativa vencida, una foto tomada fuera del predio. Se resuelven con gestión, no cambiando de proveedor.'),
     ),
 
-    card('Exportar para el Sistema de Información', 'GeoJSON con los predios de los lotes filtrados. Es el único formato que acepta la UE.',
+    card('Exportar para el Sistema de Información', 'Predios de los lotes filtrados, en formato GeoJSON.',
       slot(() => {
         const filas = filtrar(b);
         const ids = [...new Set(filas.map((e) => e.fincaId))];
@@ -184,7 +183,7 @@ export function vistaExpediente(b: Base): HTMLElement {
                 .catch(() => toast('El navegador no permitió copiar.', 'warn'));
             }),
           ),
-          nota(`Los predios bajo 4 ha podrían declararse con un punto; aquí va el polígono cuando existe, que es más fuerte. Área media de la base: ${num(b.raw.fincas.reduce((a, f) => a + f.areaTotalHa, 0) / b.raw.fincas.length, 2)} ha.`),
+          nota(`Incluye el polígono de cada predio cuando está disponible. Área promedio: ${num(b.raw.fincas.reduce((a, f) => a + f.areaTotalHa, 0) / b.raw.fincas.length, 2)} ha.`),
         );
       }),
     ),
