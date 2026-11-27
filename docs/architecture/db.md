@@ -14,7 +14,7 @@ We evaluated **Azure Cosmos DB (NoSQL)** versus **PostgreSQL (`JSONB` + PostGIS)
 
 1. **Primary Database — PostgreSQL (`JSONB` + PostGIS)**
    - Use **Azure Database for PostgreSQL (Flexible Server)** with the **PostGIS** extension enabled.
-   - Store relational entities (`farmers`, `farms`, `lots`, `consent`) in typed SQL tables, geospatial data (`Point` pins and assembled `Polygon` boundaries) in PostGIS `geometry` columns, and GS1 **EPCIS 2.0** event payloads in `JSONB` columns.
+   - Store relational entities (`users`, `farms`, `lots`, `consent`) in typed SQL tables, geospatial data (`Point` pins and assembled `Polygon` boundaries) in PostGIS `geometry` columns, and GS1 **EPCIS 2.0** event payloads in `JSONB` columns.
 
 2. **Compliance Evidence Storage — Azure Blob Storage**
    - Store EUDR due-diligence artifacts—satellite imagery, GFW deforestation check reports, and producer certifications—in **Azure Blob Storage**.
@@ -37,10 +37,10 @@ We evaluated **Azure Cosmos DB (NoSQL)** versus **PostgreSQL (`JSONB` + PostGIS)
 
 | Entity | Key Fields | Notes |
 |---|---|---|
-| `farmers` | `id`, `phone`, `name`, `verified_by_coop`, `consent_status`, `consent_updated_at` | Maps WhatsApp phone number to cooperative-verified farmer; supports `"BORRAR MIS DATOS"` |
-| `farms` | `id`, `farmer_id`, `name`, `boundary` (`geometry(Polygon, 4326)`), `captured_at` | EUDR farm polygon and capture timestamp |
-| `location_pins` | `id`, `farm_id`, `farmer_id`, `point` (`geometry(Point, 4326)`), `captured_at`, `source_message_id` | Individual WhatsApp location pins; `source_message_id` is `UNIQUE` for deduplication |
-| `lots` | `id`, `lot_code`, `farm_id`, `farmer_id`, `lot_name`, `quantity`, `unit`, `process`, `gfw_status`, `evidence_blob_url`, `created_at` | Structured lot data extracted from voice note + GFW result + Blob Storage evidence link |
+| `users` | `id`, `wa_id`, `role`, `name`, `registration_state`, `verified_by_coop`, `consent_status`, `consent_updated_at` | Maps WhatsApp `wa_id` (phone) to `role` (`farmer` or `acopio`); tracks onboarding (`awaiting_consent`, `awaiting_name`, `awaiting_farm`, `complete`) and `"BORRAR MIS DATOS"` |
+| `farms` | `id`, `user_id`, `name`, `boundary` (`geometry(Polygon, 4326)`), `captured_at` | EUDR farm polygon and capture timestamp |
+| `location_pins` | `id`, `farm_id`, `user_id`, `point` (`geometry(Point, 4326)`), `captured_at`, `source_message_id` | Individual WhatsApp location pins; `source_message_id` is `UNIQUE` for deduplication |
+| `lots` | `id`, `lot_code`, `farm_id`, `user_id`, `lot_name`, `quantity`, `unit`, `process`, `gfw_status`, `evidence_blob_url`, `created_at` | Structured lot data extracted from voice note + GFW result + Blob Storage evidence link |
 | `epcis_events` | `id`, `lot_id`, `event_type`, `event_time`, `payload` (`JSONB`), `source_message_id` | GS1 EPCIS 2.0 events across *finca* → *acopio* → *trilladora* → export |
 
 ## Trade-offs & Future Evolution
