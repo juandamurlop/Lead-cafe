@@ -34,6 +34,10 @@ param metaAppSecret string = ''
 @secure()
 param whatsappAccessToken string = ''
 
+@description('Global Forest Watch Data API key for EUDR deforestation checks.')
+@secure()
+param gfwApiKey string = ''
+
 @description('WhatsApp Business Phone Number ID.')
 param whatsappPhoneNumberId string = ''
 
@@ -71,6 +75,7 @@ module core 'resources.bicep' = {
     whatsappVerifyToken: whatsappVerifyToken
     metaAppSecret: metaAppSecret
     whatsappAccessToken: whatsappAccessToken
+    gfwApiKey: gfwApiKey
     whatsappPhoneNumberId: whatsappPhoneNumberId
     foundryModel: foundryModel
     foundryModelVersion: foundryModelVersion

@@ -31,17 +31,22 @@ param metaAppSecret string = ''
 @secure()
 param whatsappAccessToken string = ''
 
+@secure()
+param gfwApiKey string = ''
+
 param whatsappPhoneNumberId string = ''
 param foundryModel string = 'gpt-4o-transcribe'
 param foundryModelVersion string = '2025-03-20'
 param foundryModelSku string = 'GlobalStandard'
-param foundryChatModel string = 'gpt-4o-mini'
-param foundryChatModelVersion string = '2024-07-18'
+param foundryChatModel string = 'gpt-4.1-mini'
+param foundryChatModelVersion string = '2025-04-14'
+param foundryChatLocation string = 'brazilsouth'
 
 var uniqueSuffix = uniqueString(resourceGroup().id)
 var storageName = toLower('st${take(projectName, 8)}${take(uniqueSuffix, 10)}')
 var pgServerName = '${projectName}-${environment}-pg-${take(uniqueSuffix, 8)}'
 var pgDatabaseName = 'lote_claro'
+var foundryChatName = '${projectName}-${environment}-chat-${take(uniqueSuffix, 6)}'
 var foundryName = '${projectName}-${environment}-ai-${take(uniqueSuffix, 6)}'
 var logAnalyticsName = '${projectName}-${environment}-law'
 var appInsightsName = '${projectName}-${environment}-ai'
@@ -197,13 +202,25 @@ resource foundryDeployment 'Microsoft.CognitiveServices/accounts/deployments@202
   }
 }
 
-resource foundryChatDeployment 'Microsoft.CognitiveServices/accounts/deployments@2024-10-01' = {
-  parent: foundryAccount
-  name: foundryChatModel
-  // Deployments on one account are created serially.
-  dependsOn: [foundryDeployment]
+// Chat model lives in its own account: the transcription region has no chat quota.
+resource foundryChatAccount 'Microsoft.CognitiveServices/accounts@2024-10-01' = {
+  name: foundryChatName
+  location: foundryChatLocation
+  kind: 'OpenAI'
   sku: {
-    name: foundryModelSku
+    name: 'S0'
+  }
+  properties: {
+    customSubDomainName: foundryChatName
+    publicNetworkAccess: 'Enabled'
+  }
+}
+
+resource foundryChatDeployment 'Microsoft.CognitiveServices/accounts/deployments@2024-10-01' = {
+  parent: foundryChatAccount
+  name: foundryChatModel
+  sku: {
+    name: 'GlobalStandard'
     capacity: 10
   }
   properties: {
@@ -289,6 +306,10 @@ resource functionApp 'Microsoft.Web/sites@2023-12-01' = {
           value: whatsappPhoneNumberId
         }
         {
+          name: 'GFW_API_KEY'
+          value: gfwApiKey
+        }
+        {
           name: 'FOUNDRY_ENDPOINT'
           value: foundryAccount.properties.endpoint
         }
@@ -299,6 +320,14 @@ resource functionApp 'Microsoft.Web/sites@2023-12-01' = {
         {
           name: 'FOUNDRY_MODEL'
           value: foundryDeployment.name
+        }
+        {
+          name: 'FOUNDRY_CHAT_ENDPOINT'
+          value: foundryChatAccount.properties.endpoint
+        }
+        {
+          name: 'FOUNDRY_CHAT_API_KEY'
+          value: foundryChatAccount.listKeys().key1
         }
         {
           name: 'FOUNDRY_CHAT_MODEL'

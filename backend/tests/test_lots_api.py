@@ -102,3 +102,37 @@ def test_get_lot_by_code_found_and_not_found() -> None:
 
     status_400, _ = handle_get_lot(store, "   ")
     assert status_400 == 400
+
+
+def test_evidence_url_signed_per_blob_and_short_lived(monkeypatch) -> None:
+    import base64
+    from urllib.parse import parse_qs, urlparse
+    from services.blob_sas import sign_evidence_url
+
+    fake_key = base64.b64encode(b"0123456789abcdef0123456789abcdef").decode("ascii")
+    conn_str = (
+        "DefaultEndpointsProtocol=https;"
+        "AccountName=loteclaroblob;"
+        f"AccountKey={fake_key};"
+        "EndpointSuffix=core.windows.net"
+    )
+    monkeypatch.setenv("EVIDENCE_STORAGE_CONNECTION_STRING", conn_str)
+
+    store = FakeLotStore()
+    store.lots[0]["evidence_blob_url"] = (
+        "https://loteclaroblob.blob.core.windows.net/compliance-evidence/LC-2026-001.json"
+        "?sv=2022-11-02&sr=c&sp=r&se=2026-12-11T21:05:00Z&sig=oldcontainersig"
+    )
+
+    _, list_body = handle_list_lots(store)
+    signed = list_body["lots"][0]["evidence_blob_url"]
+    parsed = urlparse(signed)
+    qs = parse_qs(parsed.query)
+    assert qs["sr"] == ["b"]
+    assert qs["sp"] == ["r"]
+    assert qs["sig"] != ["oldcontainersig"]
+    assert parsed.path == "/compliance-evidence/LC-2026-001.json"
+
+    # Non-matching account leaves URL untouched
+    other = "https://other.blob.core.windows.net/c/file.json"
+    assert sign_evidence_url(other) == other

@@ -25,6 +25,25 @@ function formatDateTime(iso: string | null): string {
   });
 }
 
+function headerBadge(source: DataSource, lot: LotDetail): { label: string; tone: string } {
+  if (source !== 'api') {
+    return { label: 'Vista de demostración', tone: 'warn' };
+  }
+  if (lot.gfw_status === 'blocked') {
+    return { label: 'No apto EUDR', tone: 'bad' };
+  }
+  if (lot.gfw_status === 'alert') {
+    return { label: 'Alerta GFW en revisión', tone: 'warn' };
+  }
+  if (lot.gfw_status === 'pending') {
+    return { label: 'Verificación pendiente', tone: 'neutral' };
+  }
+  if (!lot.verified_by_coop) {
+    return { label: 'Pendiente de cooperativa', tone: 'neutral' };
+  }
+  return { label: 'Registro verificado', tone: 'ok' };
+}
+
 export function BuyerQrPage() {
   const { lotCode = '' } = useParams<{ lotCode: string }>();
   const [lot, setLot] = useState<LotDetail | null>(null);
@@ -73,6 +92,7 @@ export function BuyerQrPage() {
     label: lot.gfw_status,
     tone: 'pending',
   };
+  const statusBadge = headerBadge(source, lot);
 
   return (
     <div className="qr-page">
@@ -87,8 +107,8 @@ export function BuyerQrPage() {
             {lot.lot_name ? ` — ${lot.lot_name}` : ''}
           </h1>
         </div>
-        <span className={`badge badge--${source === 'api' ? 'ok' : 'warn'}`}>
-          {source === 'api' ? 'Registro verificado' : 'Vista de demostración'}
+        <span className={`badge badge--${statusBadge.tone}`}>
+          {statusBadge.label}
         </span>
       </header>
 

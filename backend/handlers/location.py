@@ -16,6 +16,12 @@ class LocationStoreProtocol(Protocol):
     def save_location_pin(
         self, user_id: Any, source_message_id: str, latitude: float, longitude: float
     ) -> bool: ...
+    def get_check_geometry(self, user_id: Any) -> dict[str, Any] | None: ...
+    def set_farm_lots_gfw_status(self, user_id: Any, gfw_status: str) -> None: ...
+
+
+class GfwProtocol(Protocol):
+    def check_geometry(self, geometry: dict[str, Any]) -> str: ...
 
 
 class WhatsAppProtocol(Protocol):
@@ -23,7 +29,10 @@ class WhatsAppProtocol(Protocol):
 
 
 def handle_location(
-    message: dict[str, Any], store: LocationStoreProtocol, whatsapp: WhatsAppProtocol
+    message: dict[str, Any],
+    store: LocationStoreProtocol,
+    whatsapp: WhatsAppProtocol,
+    gfw: GfwProtocol | None = None,
 ) -> bool:
     """Save a WhatsApp location pin. Returns True if the message was a location."""
     if message.get("type") != "location":
@@ -41,4 +50,10 @@ def handle_location(
     )
     logger.info("Location pin for ...%s saved=%s", wa_id[-4:], saved)
     whatsapp.send_text(wa_id, LOCATION_SAVED_REPLY if saved else LOCATION_FAILED_REPLY)
+    if saved and gfw is not None:
+        geometry = store.get_check_geometry(user["id"])
+        if geometry:
+            status = gfw.check_geometry(geometry)
+            store.set_farm_lots_gfw_status(user["id"], status)
+            logger.info("GFW status for ...%s: %s", wa_id[-4:], status)
     return True

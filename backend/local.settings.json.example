@@ -13,6 +13,7 @@
     "WHATSAPP_PHONE_NUMBER_ID": "1234567890",
     "FOUNDRY_ENDPOINT": "https://your-foundry-resource.services.ai.azure.com",
     "FOUNDRY_API_KEY": "your-foundry-key",
-    "FOUNDRY_MODEL": "gpt-4o-transcribe"
+    "FOUNDRY_MODEL": "gpt-4o-transcribe",
+    "GFW_API_KEY": "your-gfw-data-api-key"
   }
 }

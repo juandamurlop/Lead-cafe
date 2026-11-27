@@ -8,6 +8,8 @@ import json
 from typing import Any, Protocol
 from uuid import UUID
 
+from services.blob_sas import sign_evidence_url
+
 
 class LotStore(Protocol):
     """Minimal store interface required by the dashboard & QR read API."""
@@ -48,6 +50,9 @@ def handle_list_lots(
     normalized_search = search.strip() if search and search.strip() else None
 
     lots = store.list_lots(gfw_status=normalized_status, search=normalized_search)
+    for lot in lots:
+        if lot.get("evidence_blob_url"):
+            lot["evidence_blob_url"] = sign_evidence_url(lot["evidence_blob_url"])
     return 200, {"lots": lots, "count": len(lots)}
 
 
@@ -61,4 +66,6 @@ def handle_get_lot(store: LotStore, lot_code: str) -> tuple[int, dict[str, Any]]
     if lot is None:
         return 404, {"error": f"Lot '{code}' not found"}
 
+    if lot.get("evidence_blob_url"):
+        lot["evidence_blob_url"] = sign_evidence_url(lot["evidence_blob_url"])
     return 200, lot

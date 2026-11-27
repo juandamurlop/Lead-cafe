@@ -61,6 +61,7 @@ az deployment sub create \
     whatsappVerifyToken="${WHATSAPP_VERIFY_TOKEN:-}" \
     metaAppSecret="${META_APP_SECRET:-}" \
     whatsappAccessToken="${WHATSAPP_ACCESS_TOKEN:-}" \
+    gfwApiKey="${GFW_API_KEY:-}" \
     whatsappPhoneNumberId="${WHATSAPP_PHONE_NUMBER_ID:-}" \
     foundryModel="${FOUNDRY_MODEL:-gpt-4o-transcribe}" \
     foundryModelVersion="${FOUNDRY_MODEL_VERSION:-2025-03-20}" \

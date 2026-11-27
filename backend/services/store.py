@@ -21,7 +21,7 @@ class PostgresStore:
         with self._connect() as conn:
             row = conn.execute("""
                 SELECT
-                    (SELECT COUNT(*) FROM farms) AS farms,
+                    (SELECT COUNT(DISTINCT farm_id) FROM lots) AS farms,
                     (SELECT COUNT(*) FROM lots) AS lots,
                     (SELECT COUNT(*) FROM epcis_events) AS events
             """).fetchone()
@@ -131,6 +131,32 @@ class PostgresStore:
             ).fetchone()
             conn.commit()
             return row is not None
+
+    def get_check_geometry(self, user_id: Any) -> dict[str, Any] | None:
+        """GeoJSON for the user's latest farm: its polygon, else a 50 m buffer around the newest pin."""
+        sql = """
+            SELECT ST_AsGeoJSON(COALESCE(
+                f.boundary,
+                (SELECT ST_Buffer(p.point::geography, 50)::geometry FROM location_pins p
+                 WHERE p.farm_id = f.id ORDER BY p.captured_at DESC LIMIT 1)
+            ))::json AS geometry
+            FROM farms f WHERE f.user_id = %s ORDER BY f.created_at DESC LIMIT 1
+        """
+        with self._connect() as conn:
+            row = conn.execute(sql, (user_id,)).fetchone()
+            return row["geometry"] if row else None
+
+    def set_farm_lots_gfw_status(self, user_id: Any, gfw_status: str) -> None:
+        """Apply a GFW result to every lot on the user's latest farm."""
+        sql = """
+            UPDATE lots SET gfw_status = %s
+            WHERE farm_id = (
+                SELECT id FROM farms WHERE user_id = %s ORDER BY created_at DESC LIMIT 1
+            )
+        """
+        with self._connect() as conn:
+            conn.execute(sql, (gfw_status, user_id))
+            conn.commit()
 
     def create_lot(
         self,

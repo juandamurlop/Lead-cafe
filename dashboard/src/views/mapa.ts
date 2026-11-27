@@ -113,7 +113,7 @@ function dibujarMapa(b: Base, mostrarFinca: (f: Finca) => boolean, mostrarAcopio
       class: `zona ${activa ? 'is-activa' : ''}`,
       stroke: COLOR[estado],
       ...accionMapa(`Departamento ${z.nombre}`, () => store.set({ zonaSel: z.nombre, acopioSel: null, fincaSel: null })),
-    }, h('title', { text: `${z.nombre} · ${z.fincas.length} fincas · ${entero(z.kg)} kg` })));
+    }, h('title', { text: `${z.nombre} · ${z.fincas.length} ${z.fincas.length === 1 ? 'finca' : 'fincas'} · ${entero(z.kg)} kg` })));
 
     if (nivel === 0) {
       const cx = p.x(z.centro[0]);
@@ -134,7 +134,7 @@ function dibujarMapa(b: Base, mostrarFinca: (f: Finca) => boolean, mostrarAcopio
       kids.push(h('text', {
         x: lx, y: ey + 10, class: 'zona-s',
         'text-anchor': dcha ? 'start' : 'end',
-        text: `${z.fincas.length} fincas · ${entero(z.kg / 1000)} t`,
+        text: `${z.fincas.length} ${z.fincas.length === 1 ? 'finca' : 'fincas'} · ${entero(z.kg / 1000)} t`,
       }));
     }
   });
@@ -287,7 +287,10 @@ function listaZonas(b: Base): HTMLElement {
       h('span', { class: `punto punto--${TONO[est]}` }),
       h('div', {},
         h('strong', { text: z.nombre }),
-        h('span', { class: 'item-m', text: `${z.fincas.length} fincas · ${z.acopios.length} acopios · ${entero(z.kg)} kg` }),
+        h('span', {
+          class: 'item-m',
+          text: `${z.fincas.length} ${z.fincas.length === 1 ? 'finca' : 'fincas'} · ${z.acopios.length} ${z.acopios.length === 1 ? 'acopio' : 'acopios'} · ${entero(z.kg)} kg`,
+        }),
       ),
       h('span', { class: 'item-kg', text: `${z.bloqueados}/${z.fincas.length}` }),
     );

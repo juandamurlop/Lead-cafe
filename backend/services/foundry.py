@@ -15,12 +15,17 @@ class FoundryClient:
         endpoint: str,
         api_key: str,
         model: str = "gpt-4o-transcribe",
-        chat_model: str = "gpt-4o-mini",
+        chat_model: str = "gpt-4.1-mini",
+        chat_endpoint: str | None = None,
+        chat_api_key: str | None = None,
     ) -> None:
         self._endpoint = endpoint.rstrip("/")
         self._api_key = api_key
         self._model = model
         self._chat_model = chat_model
+        # The chat model may live in another account/region than the transcription model.
+        self._chat_endpoint = (chat_endpoint or endpoint).rstrip("/")
+        self._chat_api_key = chat_api_key or api_key
 
     def transcribe_audio(self, audio_bytes: bytes, mime_type: str = "audio/ogg") -> str:
         """Transcribe audio bytes to Spanish text without persisting audio files."""
@@ -44,7 +49,7 @@ class FoundryClient:
     def extract_lot(self, transcript: str) -> dict:
         """Extract lot fields (lot_name, quantity, unit, process) from a Spanish transcript."""
         url = (
-            f"{self._endpoint}/openai/deployments/{self._chat_model}"
+            f"{self._chat_endpoint}/openai/deployments/{self._chat_model}"
             "/chat/completions?api-version=2024-06-01"
         )
         system = (
@@ -62,7 +67,7 @@ class FoundryClient:
             "temperature": 0,
         }
         with httpx.Client(timeout=45.0) as client:
-            resp = client.post(url, headers={"api-key": self._api_key}, json=body)
+            resp = client.post(url, headers={"api-key": self._chat_api_key}, json=body)
             resp.raise_for_status()
             content = resp.json()["choices"][0]["message"]["content"]
         return json.loads(content)

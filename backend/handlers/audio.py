@@ -72,6 +72,8 @@ def handle_audio(
     audio_bytes, mime_type = whatsapp.download_media(str(message["audio_id"]))
     transcript = foundry.transcribe_audio(audio_bytes, mime_type)
     fields = foundry.extract_lot(transcript) if transcript else {}
+    # Debug aid while testing the pilot; remove or redact before real farmer data flows.
+    logger.info("Voice note ...%s transcript=%r fields=%s", wa_id[-4:], transcript, fields)
 
     quantity = fields.get("quantity")
     try:

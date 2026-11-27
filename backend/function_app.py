@@ -11,6 +11,7 @@ from azure.storage.queue import QueueClient, TextBase64EncodePolicy
 
 from api.lots import handle_get_lot, handle_list_lots, to_json
 from handlers.audio import handle_audio
+from services.gfw import GfwClient
 from handlers.location import handle_location
 from handlers.registration import handle_registration
 from services.foundry import FoundryClient
@@ -155,7 +156,9 @@ def process_whatsapp_message(msg: func.QueueMessage) -> None:
         endpoint=os.environ["FOUNDRY_ENDPOINT"],
         api_key=os.environ["FOUNDRY_API_KEY"],
         model=os.environ.get("FOUNDRY_MODEL", "gpt-4o-transcribe"),
-        chat_model=os.environ.get("FOUNDRY_CHAT_MODEL", "gpt-4o-mini"),
+        chat_model=os.environ.get("FOUNDRY_CHAT_MODEL", "gpt-4.1-mini"),
+        chat_endpoint=os.environ.get("FOUNDRY_CHAT_ENDPOINT"),
+        chat_api_key=os.environ.get("FOUNDRY_CHAT_API_KEY"),
     )
 
     handled = handle_registration(envelope, store, whatsapp, foundry)
@@ -167,7 +170,9 @@ def process_whatsapp_message(msg: func.QueueMessage) -> None:
         logging.info("Message %s handled by audio flow", source_message_id)
         return
 
-    if handle_location(envelope, store, whatsapp):
+    gfw_key = os.environ.get("GFW_API_KEY")
+    gfw = GfwClient(gfw_key) if gfw_key else None
+    if handle_location(envelope, store, whatsapp, gfw):
         logging.info("Message %s handled by location flow", source_message_id)
         return
 

@@ -23,9 +23,13 @@ function formatDate(iso: string | null): string {
   });
 }
 
+function plural(count: number, singular: string, pluralForm: string): string {
+  return `${count} ${count === 1 ? singular : pluralForm}`;
+}
+
 export function ComplianceDashboard() {
   const [lots, setLots] = useState<LotSummary[]>([]);
-  const [source, setSource] = useState<DataSource>('api');
+  const [source, setSource] = useState<DataSource | null>(null);
   const [summary, setSummary] = useState<DashboardSummary | null>(null);
   const [gfwFilter, setGfwFilter] = useState<string>('all');
   const [search, setSearch] = useState<string>('');
@@ -67,12 +71,22 @@ export function ComplianceDashboard() {
         </div>
         <div className="topbar-badges">
           <Link to="/cafeto">Abrir Cafeto</Link>
-          <span className={`badge badge--${source === 'api' ? 'ok' : 'warn'}`}>
-            {source === 'api' ? 'PostgreSQL en vivo' : 'Modo demostración (cafeto.json)'}
+          <span
+            className={`badge badge--${
+              source === null ? 'neutral' : source === 'api' ? 'ok' : 'warn'
+            }`}
+          >
+            {source === null
+              ? 'Conectando…'
+              : source === 'api'
+                ? 'PostgreSQL en vivo'
+                : 'Modo demostración (cafeto.json)'}
           </span>
           {summary && (
             <span className="badge badge--neutral">
-              BD: {summary.farms} fincas · {summary.lots} lotes · {summary.events} eventos EPCIS
+              BD: {plural(summary.farms, 'finca', 'fincas')} ·{' '}
+              {plural(summary.lots, 'lote', 'lotes')} ·{' '}
+              {plural(summary.events, 'evento', 'eventos')} EPCIS
             </span>
           )}
         </div>
@@ -133,7 +147,7 @@ export function ComplianceDashboard() {
         <div className="panel-header">
           <h2>Registro de Lotes y Evidencias</h2>
           <span className="muted">
-            {loading ? 'Cargando…' : `${lots.length} resultados`}
+            {loading ? 'Cargando…' : plural(lots.length, 'resultado', 'resultados')}
           </span>
         </div>
         <div className="table-wrap">

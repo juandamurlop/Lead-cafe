@@ -32,8 +32,33 @@ from services.store import PostgresStore  # noqa: E402
 
 FIRST_NAMES = ["Juan", "María", "Luis", "Ana", "Carlos", "Rosa", "Pedro", "Lucía", "Jorge", "Elena"]
 LAST_NAMES = ["Ramírez", "Gómez", "Quintero", "Herrera", "Ospina", "Vargas", "Mejía", "Cárdenas"]
-FARM_PREFIXES = ["Finca El", "Finca La", "Cooperativa", "Hacienda"]
-FARM_NAMES = ["Mirador", "Esperanza", "Cafetal", "Aurora", "Palmar", "Nogal", "Cima", "Vega"]
+FARM_CATALOG = [
+    "Finca El Mirador",
+    "Finca La Esperanza",
+    "Finca El Cafetal",
+    "Finca La Aurora",
+    "Finca El Palmar",
+    "Finca El Nogal",
+    "Cooperativa La Cima",
+    "Hacienda La Vega",
+    "Finca Villa María",
+    "Finca Los Pinos",
+    "Finca El Paraíso",
+    "Finca Buena Vista",
+    "Finca Santa Elena",
+    "Finca El Roble",
+    "Finca Las Brisas",
+    "Cooperativa Alto del Café",
+]
+ACOPIO_LOCATIONS = [
+    "Centro de Acopio Cooperativo",
+    "Bodega Central de Acopio",
+    "Punto de Acopio Veredal",
+]
+TRILLADORA_LOCATIONS = [
+    "Trilladora Regional",
+    "Planta de Trilla Cafetera",
+]
 
 # Fake wa_ids use this prefix so they are easy to recognise and clean up.
 WA_ID_PREFIX = "570000"
@@ -99,7 +124,6 @@ def seed_farm_data(
     evidence_base_url: str | None,
 ) -> list[str]:
     """Give a registered fake user a farm polygon, GPS pin, lots and EPCIS events."""
-    evidence_sas = os.environ.get("EVIDENCE_SAS", "")
     now = datetime.now(timezone.utc)
     lat, lon = rng.choice(FARM_CENTERS)
     lat, lon = lat + rng.uniform(-0.05, 0.05), lon + rng.uniform(-0.05, 0.05)
@@ -108,6 +132,10 @@ def seed_farm_data(
             (lon - half, lat + half), (lon - half, lat - half)]
     wkt = "POLYGON((" + ", ".join(f"{x:.6f} {y:.6f}" for x, y in ring) + "))"
     captured_at = now - timedelta(days=rng.randint(10, 60))
+    # Deforestation status is a property of the farm polygon, shared by all lots on the farm.
+    farm_gfw_status = rng.choice(GFW_STATUSES)
+    acopio_location = rng.choice(ACOPIO_LOCATIONS)
+    trilladora_location = rng.choice(TRILLADORA_LOCATIONS)
     lot_codes: list[str] = []
 
     with psycopg.connect(database_url) as conn:
@@ -132,30 +160,38 @@ def seed_farm_data(
 
         for i in range(lots_per_user):
             lot_code = f"LC-{wa_id[-6:]}-{i + 1}"
-            gfw_status = rng.choice(GFW_STATUSES)
-            harvested_at = now - timedelta(days=rng.randint(1, 9), hours=rng.randint(0, 12))
+            harvested_at = now - timedelta(days=rng.randint(3, 14), hours=rng.randint(1, 12))
             evidence_url = None
             if evidence_base_url:
-                evidence_url = f"{evidence_base_url.rstrip('/')}/{lot_code}.json{evidence_sas}"
+                evidence_url = f"{evidence_base_url.rstrip('/')}/{lot_code}.json"
             lot_id, = conn.execute(
                 """INSERT INTO lots (lot_code, farm_id, user_id, lot_name, quantity, unit, process,
                                      gfw_status, evidence_blob_url, source_message_id, created_at)
                    VALUES (%s, %s, %s, %s, %s, 'kg', %s, %s, %s, %s, %s)
                    ON CONFLICT (lot_code) DO NOTHING RETURNING id""",
                 (lot_code, farm_id, user_id, f"{farm_name} · Lote {i + 1}", rng.randint(50, 800),
-                 rng.choice(PROCESSES), gfw_status, evidence_url, f"fake.{uuid.uuid4().hex}", harvested_at),
+                 rng.choice(PROCESSES), farm_gfw_status, evidence_url, f"fake.{uuid.uuid4().hex}", harvested_at),
             ).fetchone() or (None,)
             if lot_id is None:
                 continue
             lot_codes.append(lot_code)
 
+            stage_locations = {
+                "finca": farm_name,
+                "acopio": acopio_location,
+                "trilladora": trilladora_location,
+            }
             for step, (event_type, stage, biz_step) in enumerate(EPCIS_STAGES[: rng.randint(1, 3)]):
+                event_time = min(
+                    harvested_at + timedelta(days=step, hours=3 * step),
+                    now - timedelta(minutes=15 * (3 - step)),
+                )
                 conn.execute(
                     """INSERT INTO epcis_events (lot_id, event_type, event_time, payload, source_message_id)
                        VALUES (%s, %s, %s, %s, %s)""",
-                    (lot_id, event_type, harvested_at + timedelta(days=step, hours=3 * step),
-                     Jsonb({"stage": stage, "bizStep": biz_step, "location": farm_name,
-                            "producer": producer, "gfwStatus": gfw_status}),
+                    (lot_id, event_type, event_time,
+                     Jsonb({"stage": stage, "bizStep": biz_step, "location": stage_locations[stage],
+                            "producer": producer, "gfwStatus": farm_gfw_status}),
                      f"fake.{uuid.uuid4().hex}"),
                 )
 
@@ -166,7 +202,7 @@ def seed_farm_data(
                     "lot_code": lot_code,
                     "farm": farm_name,
                     "producer": producer,
-                    "gfw_status": gfw_status,
+                    "gfw_status": farm_gfw_status,
                     "checked_at": now.isoformat(),
                     "boundary": {"type": "Polygon", "coordinates": [[list(p) for p in ring]]},
                 }, indent=2, ensure_ascii=False))
@@ -209,10 +245,12 @@ def main() -> None:
 
     rng = random.Random(args.seed)
     store = PostgresStore(database_url)
-    for _ in range(args.count):
+    available_farms = list(FARM_CATALOG)
+    rng.shuffle(available_farms)
+    for idx in range(args.count):
         wa_id = f"{WA_ID_PREFIX}{rng.randrange(10**6):06d}"
         name = f"{rng.choice(FIRST_NAMES)} {rng.choice(LAST_NAMES)}"
-        farm = f"{rng.choice(FARM_PREFIXES)} {rng.choice(FARM_NAMES)}"
+        farm = available_farms[idx] if idx < len(available_farms) else f"{FARM_CATALOG[idx % len(FARM_CATALOG)]} #{idx + 1}"
         register_fake_user(store, wa_id, name, farm)
         lots = seed_farm_data(
             database_url, wa_id, rng, args.lots_per_user, args.evidence_dir, args.evidence_base_url

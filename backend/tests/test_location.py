@@ -23,6 +23,17 @@ class FakeStore:
         self.pins.append((user_id, source_message_id, latitude, longitude))
         return self.saved
 
+    def get_check_geometry(self, user_id):
+        return {"type": "Polygon", "coordinates": []}
+
+    def set_farm_lots_gfw_status(self, user_id, gfw_status) -> None:
+        self.gfw_status = gfw_status
+
+
+class FakeGfw:
+    def check_geometry(self, geometry) -> str:
+        return "blocked"
+
 
 class FakeWhatsApp:
     def __init__(self) -> None:
@@ -48,6 +59,13 @@ class LocationTests(unittest.TestCase):
         self.assertTrue(handle_location(msg, store, wa))
         self.assertEqual(store.pins, [("u1", "wamid.1", 4.6, -74.1)])
         self.assertEqual(wa.sent, [LOCATION_SAVED_REPLY])
+
+    def test_location_triggers_gfw_check(self) -> None:
+        store = FakeStore({"id": "u1"})
+        msg = {"type": "location", "wa_id": "573", "source_message_id": "wamid.1",
+               "latitude": 4.6, "longitude": -74.1}
+        handle_location(msg, store, FakeWhatsApp(), FakeGfw())
+        self.assertEqual(store.gfw_status, "blocked")
 
     def test_ignores_non_location(self) -> None:
         self.assertFalse(handle_location({"type": "text", "wa_id": "1"}, FakeStore(None), FakeWhatsApp()))
