@@ -12,6 +12,7 @@ from azure.storage.queue import QueueClient, TextBase64EncodePolicy
 from api.cafeto import handle_get_cafeto_acopio, handle_get_cafeto_base
 from api.lots import handle_get_lot, handle_list_lots, handle_verify_lot, to_json
 from handlers.audio import handle_audio
+from handlers.delivery import handle_delivery
 from services.gfw import GfwClient
 from handlers.location import handle_location
 from handlers.registration import handle_registration
@@ -218,6 +219,10 @@ def process_whatsapp_message(msg: func.QueueMessage) -> None:
     handled = handle_registration(envelope, store, whatsapp, foundry)
     if handled:
         logging.info("Message %s handled by registration flow", source_message_id)
+        return
+
+    if handle_delivery(envelope, store, whatsapp, foundry):
+        logging.info("Message %s handled by delivery flow", source_message_id)
         return
 
     if handle_audio(envelope, store, whatsapp, foundry):

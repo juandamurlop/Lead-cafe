@@ -71,3 +71,32 @@ class FoundryClient:
             resp.raise_for_status()
             content = resp.json()["choices"][0]["message"]["content"]
         return json.loads(content)
+
+    def extract_delivery(self, transcript: str) -> dict:
+        """Extract an acopio delivery (producer, farm, kg, humidity, payment) from a transcript."""
+        url = (
+            f"{self._chat_endpoint}/openai/deployments/{self._chat_model}"
+            "/chat/completions?api-version=2024-06-01"
+        )
+        system = (
+            "Extrae los datos de una entrega de café pergamino de la transcripción de una nota de "
+            "voz del encargado de un centro de acopio colombiano. Responde solo JSON con las claves: "
+            "producer_name (string o null), farm_name (string o null), kg (número o null; "
+            "'kilos', 'kilogramos' y la mala transcripción 'kilómetros' significan kg), "
+            "humidity_pct (número o null; 'humedad 11,5' es 11.5), defects (string o null), "
+            "paid_cop (número en pesos o null; '310 mil' es 310000), "
+            "payment_method (efectivo, transferencia u otro texto o null). Usa null si no se menciona."
+        )
+        body = {
+            "messages": [
+                {"role": "system", "content": system},
+                {"role": "user", "content": transcript},
+            ],
+            "response_format": {"type": "json_object"},
+            "temperature": 0,
+        }
+        with httpx.Client(timeout=45.0) as client:
+            resp = client.post(url, headers={"api-key": self._chat_api_key}, json=body)
+            resp.raise_for_status()
+            content = resp.json()["choices"][0]["message"]["content"]
+        return json.loads(content)

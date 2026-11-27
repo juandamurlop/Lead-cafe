@@ -325,6 +325,42 @@ class PostgresStore:
             conn.execute(sql, (acopio_name, wa_id))
             conn.commit()
 
+    def find_farm(self, producer_name: str, farm_name: str | None) -> dict[str, Any] | None:
+        """Best farm match for a producer name (and farm name when given); None if no match."""
+        sql = """
+            SELECT f.id AS farm_id, f.name AS farm_name, u.name AS producer_name
+            FROM farms f
+            JOIN users u ON u.id = f.user_id
+            WHERE u.name ILIKE %s
+            ORDER BY (f.name ILIKE %s) DESC, f.created_at DESC
+            LIMIT 1
+        """
+        with self._connect() as conn:
+            return conn.execute(
+                sql, (f"%{producer_name}%", f"%{farm_name or ''}%" if farm_name else "")
+            ).fetchone()
+
+    def create_delivery(self, delivery: dict[str, Any]) -> bool:
+        """Insert an acopio delivery. False if the source message was already stored."""
+        sql = """
+            INSERT INTO deliveries (
+                delivery_code, acopio_user_id, farm_id, producer_name, farm_name, kg,
+                humidity_pct, defects, paid_cop, payment_method, expected_cop,
+                quality_status, traced, source_message_id
+            ) VALUES (
+                %(delivery_code)s, %(acopio_user_id)s, %(farm_id)s, %(producer_name)s,
+                %(farm_name)s, %(kg)s, %(humidity_pct)s, %(defects)s, %(paid_cop)s,
+                %(payment_method)s, %(expected_cop)s, %(quality_status)s, %(traced)s,
+                %(source_message_id)s
+            )
+            ON CONFLICT (source_message_id) DO NOTHING
+            RETURNING id
+        """
+        with self._connect() as conn:
+            row = conn.execute(sql, delivery).fetchone()
+            conn.commit()
+            return row is not None
+
     def list_lots(
         self,
         gfw_status: str | None = None,
