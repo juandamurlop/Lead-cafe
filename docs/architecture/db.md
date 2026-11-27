@@ -22,7 +22,7 @@ We evaluated **Azure Cosmos DB (NoSQL)** versus **PostgreSQL (`JSONB` + PostGIS)
 
 3. **Voice Note Audio — Ephemeral Processing (No Storage)**
    - **Do not store farmer audio files.**
-   - When a WhatsApp voice note arrives, the Azure Function downloads the media, converts it if needed for **Azure AI Speech (`es-CO`)**, transcribes it, extracts structured lot fields via Azure OpenAI/Foundry, and **immediately deletes the temporary audio** once processing completes.
+   - When a WhatsApp voice note arrives, the Azure Function downloads the media, converts it if needed, uses **Microsoft Foundry** to both transcribe the audio and extract structured lot fields for registration in PostgreSQL, and **immediately deletes the temporary audio** once processing completes.
    - Only the extracted structured fields, user confirmation state, and `source_message_id` (for webhook deduplication) are persisted.
 
 ## Rationale

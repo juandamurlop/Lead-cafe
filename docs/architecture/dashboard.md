@@ -27,7 +27,7 @@ We evaluated **Power BI**, **Python server-rendered/dashboard frameworks (Stream
 - **$0/Month Hosting & Zero Idle Compute:** Azure Static Web Apps Free tier provides global CDN hosting, SSL, and 100 GB/month of bandwidth at no cost, avoiding always-on App Service or container charges.
 - **No Per-User BI Licensing:** Unlike Power BI Pro/Embedded, a custom React web app allows unlimited internal compliance users and external buyers (via QR codes) without per-user licensing fees.
 - **No Cold Starts on Page Load:** Static assets load immediately when a buyer scans a QR code or Laura opens the dashboard, unlike scale-to-zero Python dashboard containers (e.g., Streamlit on Container Apps).
-- **Clean Separation of Concerns:** Keeps the frontend purely in TypeScript/React while the Python backend handles WhatsApp webhooks, `ffmpeg` audio conversion, Azure AI Speech, Azure OpenAI/Foundry, GFW checks, and PostgreSQL/PostGIS queries.
+- **Clean Separation of Concerns:** Keeps the frontend purely in TypeScript/React while the Python backend handles WhatsApp webhooks, Microsoft Foundry (audio transcription + structured extraction), GFW checks, and PostgreSQL/PostGIS queries.
 
 ## Minimum Scope (Stage 1)
 

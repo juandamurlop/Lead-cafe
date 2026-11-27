@@ -17,7 +17,7 @@ This document specifies the onboarding state machine implemented in `handlers/re
    - Any **unregistered `wa_id`** defaults to `role = 'farmer'` and `verified_by_coop = false` and enters the WhatsApp onboarding flow.
 
 2. **Voice-Friendly, Consent-First State Machine**
-   - Every onboarding prompt accepts **plain Spanish text or a voice note** (transcribed via Azure AI Speech `es-CO`) for name and farm/cooperative inputs, except consent which uses interactive WhatsApp reply buttons.
+   - Every onboarding prompt accepts **plain Spanish text or a voice note** (transcribed via **Microsoft Foundry**) for name and farm/cooperative inputs, except consent which uses interactive WhatsApp reply buttons.
    - Until `registration_state = 'complete'`, incoming messages from that `wa_id` are routed to `handlers/registration.py` instead of lot/location handlers.
 
 ## State Machine
@@ -26,7 +26,7 @@ This document specifies the onboarding state machine implemented in `handlers/re
 |---|---|---|---|
 | *(not in `users`)* | Create row (`consent_status = 'pending'`), send consent buttons: *"¡Hola! Bienvenido a Lote Claro ☕. Para registrar tus lotes necesitamos tu permiso para guardar tus datos y ubicación. ¿Aceptas?"* `[Sí, acepto]` `[No]` | — | `awaiting_consent` |
 | `awaiting_consent` | If `[Sí, acepto]`: set `consent_status = 'accepted'`, `consent_updated_at = NOW()`, ask *"¿Cuál es tu nombre completo? (Puedes escribir o enviar nota de voz)"*.<br>If `[No]`: delete/mark declined and reply *"Entendido, no guardaremos tus datos."* | Button reply | `awaiting_name` (or `declined`) |
-| `awaiting_name` | Save `users.name` (from text or Speech transcript), ask *"¿Cómo se llama tu finca o cooperativa?"* | Text or voice note | `awaiting_farm` |
+| `awaiting_name` | Save `users.name` (from text or Foundry transcript), ask *"¿Cómo se llama tu finca o cooperativa?"* | Text or voice note | `awaiting_farm` |
 | `awaiting_farm` | Create initial `farms` record linked to `user_id`, set `registration_state = 'complete'`, reply *"¡Listo, [Nombre]! Ya puedes enviarnos notas de voz de tus lotes o compartir tu ubicación 📍."* | Text or voice note | `complete` |
 
 ## Edge Cases & Governance
