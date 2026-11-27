@@ -24,6 +24,8 @@ def extract_messages(payload: dict[str, Any]) -> list[dict[str, Any]]:
                     "button_title": None,
                     "audio_id": None,
                     "audio_mime_type": None,
+                    "latitude": None,
+                    "longitude": None,
                 }
 
                 if msg_type == "text":
@@ -37,6 +39,10 @@ def extract_messages(payload: dict[str, Any]) -> list[dict[str, Any]]:
                     audio = msg.get("audio") or {}
                     envelope["audio_id"] = audio.get("id")
                     envelope["audio_mime_type"] = audio.get("mime_type", "audio/ogg")
+                elif msg_type == "location":
+                    location = msg.get("location") or {}
+                    envelope["latitude"] = location.get("latitude")
+                    envelope["longitude"] = location.get("longitude")
 
                 if envelope["source_message_id"] and envelope["wa_id"]:
                     envelopes.append(envelope)

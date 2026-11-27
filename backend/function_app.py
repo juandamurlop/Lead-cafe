@@ -10,6 +10,8 @@ import azure.functions as func
 from azure.storage.queue import QueueClient, TextBase64EncodePolicy
 
 from api.lots import handle_get_lot, handle_list_lots, to_json
+from handlers.audio import handle_audio
+from handlers.location import handle_location
 from handlers.registration import handle_registration
 from services.foundry import FoundryClient
 from services.store import PostgresStore
@@ -153,11 +155,20 @@ def process_whatsapp_message(msg: func.QueueMessage) -> None:
         endpoint=os.environ["FOUNDRY_ENDPOINT"],
         api_key=os.environ["FOUNDRY_API_KEY"],
         model=os.environ.get("FOUNDRY_MODEL", "gpt-4o-transcribe"),
+        chat_model=os.environ.get("FOUNDRY_CHAT_MODEL", "gpt-4o-mini"),
     )
 
     handled = handle_registration(envelope, store, whatsapp, foundry)
     if handled:
         logging.info("Message %s handled by registration flow", source_message_id)
+        return
+
+    if handle_audio(envelope, store, whatsapp, foundry):
+        logging.info("Message %s handled by audio flow", source_message_id)
+        return
+
+    if handle_location(envelope, store, whatsapp):
+        logging.info("Message %s handled by location flow", source_message_id)
         return
 
     logging.info("Registered user %s sent message type %s (handlers pending)", wa_id, envelope.get("type"))

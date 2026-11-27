@@ -35,6 +35,8 @@ param whatsappPhoneNumberId string = ''
 param foundryModel string = 'gpt-4o-transcribe'
 param foundryModelVersion string = '2025-03-20'
 param foundryModelSku string = 'GlobalStandard'
+param foundryChatModel string = 'gpt-4o-mini'
+param foundryChatModelVersion string = '2024-07-18'
 
 var uniqueSuffix = uniqueString(resourceGroup().id)
 var storageName = toLower('st${take(projectName, 8)}${take(uniqueSuffix, 10)}')
@@ -195,6 +197,24 @@ resource foundryDeployment 'Microsoft.CognitiveServices/accounts/deployments@202
   }
 }
 
+resource foundryChatDeployment 'Microsoft.CognitiveServices/accounts/deployments@2024-10-01' = {
+  parent: foundryAccount
+  name: foundryChatModel
+  // Deployments on one account are created serially.
+  dependsOn: [foundryDeployment]
+  sku: {
+    name: foundryModelSku
+    capacity: 10
+  }
+  properties: {
+    model: {
+      format: 'OpenAI'
+      name: foundryChatModel
+      version: foundryChatModelVersion
+    }
+  }
+}
+
 resource hostingPlan 'Microsoft.Web/serverfarms@2023-12-01' = {
   name: planName
   location: location
@@ -279,6 +299,10 @@ resource functionApp 'Microsoft.Web/sites@2023-12-01' = {
         {
           name: 'FOUNDRY_MODEL'
           value: foundryDeployment.name
+        }
+        {
+          name: 'FOUNDRY_CHAT_MODEL'
+          value: foundryChatDeployment.name
         }
       ]
     }

@@ -21,7 +21,7 @@ function colorForStatus(status: GfwStatus): string {
 export function FarmPolygonMap({ lots, height = 360 }: FarmPolygonMapProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<L.Map | null>(null);
-  const layerRef = useRef<L.GeoJSON | null>(null);
+  const layerRef = useRef<L.FeatureGroup | null>(null);
 
   useEffect(() => {
     if (!containerRef.current || mapRef.current) return;
@@ -55,6 +55,8 @@ export function FarmPolygonMap({ lots, height = 360 }: FarmPolygonMapProps) {
       layerRef.current = null;
     }
 
+    // Smallholder plots are ~100 m wide, invisible at country zoom, so each farm also gets a marker.
+    const seenFarms = new Set<string>();
     const features = lots
       .filter((lot) => lot.boundary_geojson !== null)
       .map((lot) => ({
@@ -95,13 +97,34 @@ export function FarmPolygonMap({ lots, height = 360 }: FarmPolygonMapProps) {
           );
         },
       },
-    ).addTo(map);
+    );
 
-    layerRef.current = geoLayer;
+    const markers = L.featureGroup();
+    for (const lot of lots) {
+      if (!lot.boundary_geojson || seenFarms.has(lot.farm_id)) continue;
+      seenFarms.add(lot.farm_id);
+      const center = L.geoJSON(lot.boundary_geojson).getBounds().getCenter();
+      const color = colorForStatus(lot.gfw_status);
+      L.circleMarker(center, {
+        radius: 8,
+        color: '#fff',
+        weight: 2,
+        fillColor: color,
+        fillOpacity: 0.95,
+      })
+        .bindPopup(
+          `<strong>${lot.farm_name}</strong><br/>Productor: ${lot.producer_name ?? 'Sin nombre'}<br/>GFW: ${lot.gfw_status}`,
+        )
+        .addTo(markers);
+    }
 
-    const bounds = geoLayer.getBounds();
+    const group = L.featureGroup([geoLayer, markers]).addTo(map);
+    layerRef.current = group;
+
+    map.invalidateSize();
+    const bounds = group.getBounds();
     if (bounds.isValid()) {
-      map.fitBounds(bounds, { padding: [24, 24], maxZoom: 15 });
+      map.fitBounds(bounds, { padding: [32, 32], maxZoom: 15 });
     }
   }, [lots]);
 

@@ -111,6 +111,57 @@ class PostgresStore:
             conn.execute(sql, (name, wa_id))
             conn.commit()
 
+    def save_location_pin(
+        self, user_id: Any, source_message_id: str, latitude: float, longitude: float
+    ) -> bool:
+        """Store a location pin on the user's most recent farm. False if the user has no farm."""
+        sql = """
+            INSERT INTO location_pins (farm_id, user_id, point, source_message_id)
+            SELECT f.id, %s, ST_SetSRID(ST_MakePoint(%s, %s), 4326), %s
+            FROM farms f
+            WHERE f.user_id = %s
+            ORDER BY f.created_at DESC
+            LIMIT 1
+            ON CONFLICT (source_message_id) DO NOTHING
+            RETURNING id
+        """
+        with self._connect() as conn:
+            row = conn.execute(
+                sql, (user_id, longitude, latitude, source_message_id, user_id)
+            ).fetchone()
+            conn.commit()
+            return row is not None
+
+    def create_lot(
+        self,
+        user_id: Any,
+        source_message_id: str,
+        lot_code: str,
+        lot_name: str | None,
+        quantity: float | None,
+        unit: str | None,
+        process: str | None,
+    ) -> bool:
+        """Create a lot on the user's most recent farm. False if no farm or duplicate."""
+        sql = """
+            INSERT INTO lots (lot_code, farm_id, user_id, lot_name, quantity, unit, process,
+                              source_message_id)
+            SELECT %s, f.id, %s, %s, %s, %s, %s, %s
+            FROM farms f
+            WHERE f.user_id = %s
+            ORDER BY f.created_at DESC
+            LIMIT 1
+            ON CONFLICT (source_message_id) DO NOTHING
+            RETURNING id
+        """
+        with self._connect() as conn:
+            row = conn.execute(
+                sql,
+                (lot_code, user_id, lot_name, quantity, unit, process, source_message_id, user_id),
+            ).fetchone()
+            conn.commit()
+            return row is not None
+
     def complete_registration_with_farm(self, user_id: Any, wa_id: str, farm_name: str) -> None:
         """Create initial farm record and mark registration complete."""
         insert_farm = """
