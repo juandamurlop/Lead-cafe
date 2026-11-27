@@ -4,25 +4,42 @@ set -euo pipefail
 # Deploy the Lote Claro resource group and core Azure resources via Bicep
 # (including Storage, PostgreSQL/PostGIS, Function App, and Microsoft Foundry).
 #
-# Required environment variables:
-#   PG_ADMIN_PASSWORD
+# Reads WHATSAPP_* / META_APP_SECRET from environment variables first,
+# falling back to backend/local.settings.json if present.
 #
-# Optional environment variables:
-#   LOCATION                  (default: eastus2)
-#   WHATSAPP_VERIFY_TOKEN     (default: "")
-#   META_APP_SECRET           (default: "")
-#   WHATSAPP_ACCESS_TOKEN     (default: "")
-#   WHATSAPP_PHONE_NUMBER_ID  (default: "")
-#   FOUNDRY_MODEL             (default: gpt-4o-transcribe)
-#   FOUNDRY_MODEL_VERSION     (default: 2025-03-20)
-#   FOUNDRY_MODEL_SKU         (default: GlobalStandard)
+# Required:
+#   PG_ADMIN_PASSWORD (or set in env before running)
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 INFRA_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
+ROOT_DIR="$(cd "${INFRA_DIR}/.." && pwd)"
+LOCAL_SETTINGS="${ROOT_DIR}/backend/local.settings.json"
+
+if [[ -f "${LOCAL_SETTINGS}" ]]; then
+  while IFS='=' read -r key val; do
+    if [[ -n "${key}" && -z "${!key:-}" ]]; then
+      export "${key}=${val}"
+    fi
+  done < <(python3 -c '
+import json, sys
+with open(sys.argv[1], "r", encoding="utf-8") as f:
+    vals = json.load(f).get("Values", {})
+for k in (
+    "WHATSAPP_VERIFY_TOKEN",
+    "META_APP_SECRET",
+    "WHATSAPP_ACCESS_TOKEN",
+    "WHATSAPP_PHONE_NUMBER_ID",
+    "FOUNDRY_MODEL",
+):
+    if vals.get(k):
+        print(f"{k}={vals[k]}")
+' "${LOCAL_SETTINGS}")
+fi
 
 if [[ -z "${PG_ADMIN_PASSWORD:-}" ]]; then
-  echo "Error: PG_ADMIN_PASSWORD must be set." >&2
-  exit 1
+  read -r -s -p "Enter PostgreSQL admin password (PG_ADMIN_PASSWORD): " PG_ADMIN_PASSWORD
+  echo
+  export PG_ADMIN_PASSWORD
 fi
 
 LOCATION="${LOCATION:-eastus2}"
