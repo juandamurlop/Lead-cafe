@@ -30,6 +30,9 @@ class FakeWhatsApp:
     def send_text(self, to_wa_id: str, body: str) -> None:
         self.sent.append(body)
 
+    def send_location_request(self, to_wa_id: str, body: str) -> None:
+        self.sent.append(body)
+
     def download_media(self, media_id: str):
         return b"audio", "audio/ogg"
 
@@ -58,6 +61,12 @@ class AudioTests(unittest.TestCase):
                          ("u1", "wamid.1", "La Esperanza", 50.0, "kg", "lavado"))
         self.assertTrue(code.startswith("LC-"))
         self.assertIn(code, wa.sent[0])
+
+    def test_normalizes_misheard_unit(self) -> None:
+        store, wa = FakeStore(), FakeWhatsApp()
+        fields = {"lot_name": "San Benites", "quantity": 50, "unit": "kilómetros", "process": "lavado"}
+        handle_audio(MSG, store, wa, FakeFoundry(fields))
+        self.assertEqual(store.lots[0][5], "kg")
 
     def test_nothing_extracted(self) -> None:
         store, wa = FakeStore(), FakeWhatsApp()

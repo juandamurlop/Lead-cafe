@@ -116,18 +116,21 @@ class PostgresStore:
     ) -> bool:
         """Store a location pin on the user's most recent farm. False if the user has no farm."""
         sql = """
-            INSERT INTO location_pins (farm_id, user_id, point, source_message_id)
-            SELECT f.id, %s, ST_SetSRID(ST_MakePoint(%s, %s), 4326), %s
-            FROM farms f
-            WHERE f.user_id = %s
-            ORDER BY f.created_at DESC
-            LIMIT 1
-            ON CONFLICT (source_message_id) DO NOTHING
+            WITH farm AS (
+                SELECT id FROM farms WHERE user_id = %s ORDER BY created_at DESC LIMIT 1
+            ), pin AS (
+                INSERT INTO location_pins (farm_id, user_id, point, source_message_id)
+                SELECT farm.id, %s, ST_SetSRID(ST_MakePoint(%s, %s), 4326), %s FROM farm
+                ON CONFLICT (source_message_id) DO NOTHING
+                RETURNING farm_id
+            )
+            UPDATE farms SET captured_at = NOW()
+            WHERE id IN (SELECT farm_id FROM pin)
             RETURNING id
         """
         with self._connect() as conn:
             row = conn.execute(
-                sql, (user_id, longitude, latitude, source_message_id, user_id)
+                sql, (user_id, user_id, longitude, latitude, source_message_id)
             ).fetchone()
             conn.commit()
             return row is not None

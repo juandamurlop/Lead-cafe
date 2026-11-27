@@ -17,7 +17,7 @@ FAILED_REPLY = "No pudimos registrar tu lote. Intenta de nuevo en un momento."
 LOT_SAVED_TEMPLATE = (
     "✅ Lote {lot_code} registrado\n"
     "Nombre: {name}\nCantidad: {quantity}\nProceso: {process}\n"
-    "Comparte tu ubicación 📍 para completar el registro."
+    "Toca el botón para enviar la ubicación de tu finca 📍."
 )
 
 
@@ -37,6 +37,7 @@ class AudioStoreProtocol(Protocol):
 
 class WhatsAppProtocol(Protocol):
     def send_text(self, to_wa_id: str, body: str) -> None: ...
+    def send_location_request(self, to_wa_id: str, body: str) -> None: ...
     def download_media(self, media_id: str) -> tuple[bytes, str]: ...
 
 
@@ -47,6 +48,18 @@ class FoundryProtocol(Protocol):
 
 def new_lot_code() -> str:
     return f"LC-{datetime.now(timezone.utc):%y%m%d}-{secrets.token_hex(2).upper()}"
+
+
+UNIT_ALIASES = {
+    "kilo": "kg", "kilos": "kg", "kilogramo": "kg", "kilogramos": "kg", "kg": "kg",
+    "kilómetro": "kg", "kilómetros": "kg", "kilometro": "kg", "kilometros": "kg",
+    "arroba": "arrobas", "arrobas": "arrobas", "carga": "cargas", "cargas": "cargas",
+    "saco": "sacos", "sacos": "sacos", "libra": "libras", "libras": "libras",
+}
+
+
+def normalize_unit(unit: str | None) -> str | None:
+    return UNIT_ALIASES.get(unit.lower(), unit) if unit else None
 
 
 def _clean(value: Any) -> str | None:
@@ -81,6 +94,7 @@ def handle_audio(
     except (TypeError, ValueError):
         quantity = None
     lot_name, unit, process = (_clean(fields.get(k)) for k in ("lot_name", "unit", "process"))
+    unit = normalize_unit(unit)
 
     if quantity is None and lot_name is None and process is None:
         logger.info("No lot fields extracted for ...%s", wa_id[-4:])
@@ -97,10 +111,12 @@ def handle_audio(
         return True
 
     qty_text = f"{quantity:g} {unit or ''}".strip() if quantity is not None else "—"
-    whatsapp.send_text(
-        wa_id,
-        LOT_SAVED_TEMPLATE.format(
-            lot_code=lot_code, name=lot_name or "—", quantity=qty_text, process=process or "—"
-        ),
+    summary = LOT_SAVED_TEMPLATE.format(
+        lot_code=lot_code, name=lot_name or "—", quantity=qty_text, process=process or "—"
     )
+    try:
+        whatsapp.send_location_request(wa_id, summary)
+    except Exception:
+        logger.exception("Location request failed for ...%s; falling back to text", wa_id[-4:])
+        whatsapp.send_text(wa_id, summary)
     return True

@@ -62,6 +62,23 @@ class WhatsAppClient:
             resp = client.post(url, headers=self._headers(), json=payload)
             resp.raise_for_status()
 
+    def send_location_request(self, to_wa_id: str, body: str) -> None:
+        """Send a message with a one-tap 'Send location' button."""
+        url = f"{self._base_url}/{self._phone_number_id}/messages"
+        payload = {
+            "messaging_product": "whatsapp",
+            "to": to_wa_id,
+            "type": "interactive",
+            "interactive": {
+                "type": "location_request_message",
+                "body": {"text": body},
+                "action": {"name": "send_location"},
+            },
+        }
+        with httpx.Client(timeout=15.0) as client:
+            resp = client.post(url, headers=self._headers(), json=payload)
+            resp.raise_for_status()
+
     def download_media(self, media_id: str) -> tuple[bytes, str]:
         """Fetch media metadata and download raw bytes from WhatsApp Cloud API."""
         meta_url = f"{self._base_url}/{media_id}"
