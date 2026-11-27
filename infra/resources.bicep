@@ -12,6 +12,12 @@ param location string
 @description('PostgreSQL administrator username.')
 param pgAdminUser string
 
+@description('PostgreSQL Flexible Server SKU name.')
+param pgSkuName string = 'Standard_B2s'
+
+@description('PostgreSQL Flexible Server SKU tier.')
+param pgSkuTier string = 'Burstable'
+
 @secure()
 @description('PostgreSQL administrator password.')
 param pgAdminPassword string
@@ -41,6 +47,7 @@ var planName = '${projectName}-${environment}-plan'
 var functionAppName = '${projectName}-${environment}-func-${take(uniqueSuffix, 6)}'
 var queueName = 'whatsapp-inbound'
 var evidenceContainerName = 'compliance-evidence'
+var deploymentContainerName = 'app-package'
 
 resource storage 'Microsoft.Storage/storageAccounts@2023-05-01' = {
   name: storageName
@@ -79,6 +86,14 @@ resource evidenceContainer 'Microsoft.Storage/storageAccounts/blobServices/conta
   }
 }
 
+resource deploymentContainer 'Microsoft.Storage/storageAccounts/blobServices/containers@2023-05-01' = {
+  parent: blobService
+  name: deploymentContainerName
+  properties: {
+    publicAccess: 'None'
+  }
+}
+
 resource logAnalytics 'Microsoft.OperationalInsights/workspaces@2023-09-01' = {
   name: logAnalyticsName
   location: location
@@ -104,8 +119,8 @@ resource pgServer 'Microsoft.DBforPostgreSQL/flexibleServers@2023-12-01-preview'
   name: pgServerName
   location: location
   sku: {
-    name: 'Standard_B1ms'
-    tier: 'Burstable'
+    name: pgSkuName
+    tier: pgSkuTier
   }
   properties: {
     version: '16'
@@ -185,8 +200,8 @@ resource hostingPlan 'Microsoft.Web/serverfarms@2023-12-01' = {
   location: location
   kind: 'functionapp'
   sku: {
-    name: 'Y1'
-    tier: 'Dynamic'
+    name: 'FC1'
+    tier: 'FlexConsumption'
   }
   properties: {
     reserved: true
@@ -204,20 +219,10 @@ resource functionApp 'Microsoft.Web/sites@2023-12-01' = {
     serverFarmId: hostingPlan.id
     httpsOnly: true
     siteConfig: {
-      linuxFxVersion: 'PYTHON|3.11'
-      pythonVersion: '3.11'
       appSettings: [
         {
           name: 'AzureWebJobsStorage'
           value: storageConnectionString
-        }
-        {
-          name: 'FUNCTIONS_EXTENSION_VERSION'
-          value: '~4'
-        }
-        {
-          name: 'FUNCTIONS_WORKER_RUNTIME'
-          value: 'python'
         }
         {
           name: 'APPLICATIONINSIGHTS_CONNECTION_STRING'
@@ -265,12 +270,33 @@ resource functionApp 'Microsoft.Web/sites@2023-12-01' = {
         }
       ]
     }
+    functionAppConfig: {
+      deployment: {
+        storage: {
+          type: 'blobContainer'
+          value: '${storage.properties.primaryEndpoints.blob}${deploymentContainerName}'
+          authentication: {
+            type: 'StorageAccountConnectionString'
+            storageAccountConnectionStringName: 'AzureWebJobsStorage'
+          }
+        }
+      }
+      scaleAndConcurrency: {
+        maximumInstanceCount: 40
+        instanceMemoryMB: 2048
+      }
+      runtime: {
+        name: 'python'
+        version: '3.11'
+      }
+    }
   }
   dependsOn: [
     pgDatabase
     pgPostgisExtension
     inboundQueue
     evidenceContainer
+    deploymentContainer
   ]
 }
 

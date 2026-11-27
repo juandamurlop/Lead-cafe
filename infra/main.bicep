@@ -12,6 +12,12 @@ param location string = 'canadacentral'
 @description('PostgreSQL administrator username.')
 param pgAdminUser string = 'loteadmin'
 
+@description('PostgreSQL Flexible Server SKU name.')
+param pgSkuName string = 'Standard_B2s'
+
+@description('PostgreSQL Flexible Server SKU tier.')
+param pgSkuTier string = 'Burstable'
+
 @secure()
 @description('PostgreSQL administrator password.')
 param pgAdminPassword string
@@ -60,6 +66,8 @@ module core 'resources.bicep' = {
     location: location
     pgAdminUser: pgAdminUser
     pgAdminPassword: pgAdminPassword
+    pgSkuName: pgSkuName
+    pgSkuTier: pgSkuTier
     whatsappVerifyToken: whatsappVerifyToken
     metaAppSecret: metaAppSecret
     whatsappAccessToken: whatsappAccessToken
