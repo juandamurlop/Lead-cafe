@@ -1,6 +1,11 @@
-# Cafeto
+# Lote Claro — Dashboard & Buyer QR Web App
 
-Dashboard de demostración para Lote Claro. Las siete vistas usan el conjunto ficticio incluido en `data/cafeto.json`. Panorama también muestra los totales de fincas, lotes y eventos EPCIS de PostgreSQL cuando está disponible la API.
+TypeScript + React (Vite) SPA con mapas Leaflet para polígonos EUDR, acorde con [docs/architecture/dashboard.md](../docs/architecture/dashboard.md).
+
+## Rutas
+
+- `/` — Tablero de cumplimiento EUDR para Laura (filtros GFW, mapa Leaflet de polígonos, tabla de lotes y enlaces a evidencia en Azure Blob Storage).
+- `/lot/:lotCode` — Pasaporte público QR para compradores (polígono GPS de la finca, fecha de captura, estado GFW y línea de tiempo GS1 EPCIS 2.0).
 
 ## Desarrollo local
 
@@ -11,12 +16,10 @@ npm run check
 npm run dev
 ```
 
-Abre `http://127.0.0.1:8000`. Para generar los archivos que sirve un hosting estático, ejecuta `npm run build` y publica `index.html`, `app.js`, `styles.css` y `data/`.
+En desarrollo, Vite proxea `/api/*` hacia `http://localhost:7071` (Azure Functions). Si el backend no está encendido, el frontend usa `public/data/cafeto.json` en modo demostración.
 
-## Conexión con Azure Functions
+Para compilar el paquete estático para Azure Static Web Apps (`dist/`):
 
-1. Aplica la migración existente `db/migrations/001_init_schema.sql` a la base configurada en `DATABASE_URL`.
-2. Configura `DASHBOARD_SUMMARY_ENABLED=true` en Azure Functions o en `Values` de `backend/local.settings.json` para publicar los tres contadores agregados.
-3. El dashboard consulta `/api/dashboard/summary` en su mismo origen. Si el backend usa otro origen, cambia la etiqueta `cafeto-summary-url` en `index.html` a la URL completa y agrega el origen del dashboard a CORS. En local, usa `http://localhost:7071/api/dashboard/summary` y ejecuta `func start --cors http://127.0.0.1:8000` desde `backend/`.
-
-Si la API está deshabilitada o sin conexión, Panorama muestra su estado y las vistas de demostración siguen disponibles. Los controles de señal, acopio y pagos son simulaciones del dashboard original.
+```sh
+npm run build
+```
