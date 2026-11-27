@@ -33,6 +33,23 @@ function worstStatus(statuses: GfwStatus[]): GfwStatus {
   }, statuses[0] ?? 'pending');
 }
 
+// Coffee bean marker: body takes the GFW status color, the crease stays white.
+function beanIcon(color: string): L.DivIcon {
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="30" height="30" viewBox="0 0 32 32">
+    <g transform="rotate(-35 16 16)">
+      <ellipse cx="16" cy="16" rx="9" ry="13" fill="${color}" stroke="#fff" stroke-width="2"/>
+      <path d="M16 3.5 C10 10 22 22 16 28.5" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round"/>
+    </g>
+  </svg>`;
+  return L.divIcon({
+    html: svg,
+    className: 'bean-marker',
+    iconSize: [30, 30],
+    iconAnchor: [15, 15],
+    popupAnchor: [0, -14],
+  });
+}
+
 export function FarmPolygonMap({ lots, height = 360 }: FarmPolygonMapProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<L.Map | null>(null);
@@ -141,13 +158,7 @@ export function FarmPolygonMap({ lots, height = 360 }: FarmPolygonMapProps) {
       const center = plotBounds.getCenter();
       const color = colorForStatus(status);
       const lotList = farmLots.map((l) => l.lot_code).join(', ');
-      L.circleMarker(center, {
-        radius: 8,
-        color: '#fff',
-        weight: 2,
-        fillColor: color,
-        fillOpacity: 0.95,
-      })
+      L.marker(center, { icon: beanIcon(color), title: primary.farm_name })
         .bindPopup(
           `<strong>${primary.farm_name}</strong><br/>Lotes: ${lotList}<br/>Productor: ${primary.producer_name ?? 'Sin nombre'}<br/>GFW: ${status}<br/><em>Haz clic para ver el polígono</em>`,
         )
