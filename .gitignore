@@ -11,6 +11,9 @@ downloads/
 eggs/
 .eggs/
 lib/
+!dashboard/src/lib/
+dashboard/node_modules/
+dashboard/app.js
 lib64/
 parts/
 sdist/
