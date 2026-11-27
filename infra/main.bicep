@@ -7,7 +7,7 @@ param projectName string = 'loteclaro'
 param environment string = 'dev'
 
 @description('Azure region for the resource group and all resources.')
-param location string = 'eastus2'
+param location string = 'canadacentral'
 
 @description('PostgreSQL administrator username.')
 param pgAdminUser string = 'loteadmin'
