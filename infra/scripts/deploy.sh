@@ -49,9 +49,10 @@ fi
 
 LOCATION="${LOCATION:-canadacentral}"
 
+DEPLOYMENT_NAME="loteclaro-$(date +%Y%m%d-%H%M%S)"
 echo "Deploying Bicep template '${INFRA_DIR}/main.bicep' to '${LOCATION}'..."
 az deployment sub create \
-  --name "loteclaro-$(date +%Y%m%d-%H%M%S)" \
+  --name "${DEPLOYMENT_NAME}" \
   --location "${LOCATION}" \
   --template-file "${INFRA_DIR}/main.bicep" \
   --parameters "${INFRA_DIR}/main.bicepparam" \
@@ -64,3 +65,16 @@ az deployment sub create \
     foundryModel="${FOUNDRY_MODEL:-gpt-4o-transcribe}" \
     foundryModelVersion="${FOUNDRY_MODEL_VERSION:-2025-03-20}" \
     foundryModelSku="${FOUNDRY_MODEL_SKU:-GlobalStandard}"
+
+RG_NAME="$(az deployment sub show --name "${DEPLOYMENT_NAME}" --query 'properties.outputs.resourceGroupName.value' -o tsv)"
+STORAGE_ACCOUNT="$(az deployment sub show --name "${DEPLOYMENT_NAME}" --query 'properties.outputs.storageAccountName.value' -o tsv)"
+STORAGE_KEY="$(az storage account keys list --resource-group "${RG_NAME}" --account-name "${STORAGE_ACCOUNT}" --query '[0].value' -o tsv)"
+
+echo "Enabling static website hosting on '${STORAGE_ACCOUNT}'..."
+az storage blob service-properties update \
+  --account-name "${STORAGE_ACCOUNT}" \
+  --account-key "${STORAGE_KEY}" \
+  --static-website \
+  --index-document index.html \
+  --404-document index.html \
+  --output none

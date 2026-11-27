@@ -45,7 +45,6 @@ var logAnalyticsName = '${projectName}-${environment}-law'
 var appInsightsName = '${projectName}-${environment}-ai'
 var planName = '${projectName}-${environment}-plan'
 var functionAppName = '${projectName}-${environment}-func-${take(uniqueSuffix, 6)}'
-var staticWebAppName = '${projectName}-${environment}-swa-${take(uniqueSuffix, 6)}'
 var queueName = 'whatsapp-inbound'
 var evidenceContainerName = 'compliance-evidence'
 var deploymentContainerName = 'app-package'
@@ -211,18 +210,8 @@ resource hostingPlan 'Microsoft.Web/serverfarms@2023-12-01' = {
 
 var storageConnectionString = 'DefaultEndpointsProtocol=https;AccountName=${storage.name};EndpointSuffix=${az.environment().suffixes.storage};AccountKey=${storage.listKeys().keys[0].value}'
 var databaseUrl = 'postgresql://${pgAdminUser}:${uriComponent(pgAdminPassword)}@${pgServer.properties.fullyQualifiedDomainName}:5432/${pgDatabaseName}?sslmode=require'
-
-resource staticWebApp 'Microsoft.Web/staticSites@2023-12-01' = {
-  name: staticWebAppName
-  location: location
-  sku: {
-    name: 'Free'
-    tier: 'Free'
-  }
-  properties: {
-    allowConfigFileUpdates: true
-  }
-}
+var dashboardUrl = storage.properties.primaryEndpoints.web
+var dashboardOrigin = endsWith(dashboardUrl, '/') ? take(dashboardUrl, length(dashboardUrl) - 1) : dashboardUrl
 
 resource functionApp 'Microsoft.Web/sites@2023-12-01' = {
   name: functionAppName
@@ -234,7 +223,8 @@ resource functionApp 'Microsoft.Web/sites@2023-12-01' = {
     siteConfig: {
       cors: {
         allowedOrigins: [
-          'https://${staticWebApp.properties.defaultHostname}'
+          dashboardOrigin
+          'http://localhost:5173'
         ]
       }
       appSettings: [
@@ -324,8 +314,7 @@ resource functionApp 'Microsoft.Web/sites@2023-12-01' = {
 
 output functionAppName string = functionApp.name
 output functionAppHostName string = functionApp.properties.defaultHostName
-output staticWebAppName string = staticWebApp.name
-output staticWebAppHostName string = staticWebApp.properties.defaultHostname
 output postgresHost string = pgServer.properties.fullyQualifiedDomainName
 output storageAccountName string = storage.name
 output foundryEndpoint string = foundryAccount.properties.endpoint
+output dashboardUrl string = dashboardUrl
