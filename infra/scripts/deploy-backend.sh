@@ -122,6 +122,6 @@ print(int(bool(d.get("complete"))), d.get("status", 0), (d.get("status_text") or
   done
 fi
 
-FUNCTION_HOST="$(az functionapp show -g "${RG_NAME}" -n "${FUNCTION_APP}" --query defaultHostName -o tsv)"
+FUNCTION_HOST="$(az functionapp list -g "${RG_NAME}" --query "[?name=='${FUNCTION_APP}'].defaultHostName | [0]" -o tsv)"
 echo "Backend deployed: https://${FUNCTION_HOST}"
 echo "Set the Meta webhook callback URL to https://${FUNCTION_HOST}/api/webhook with your verify token."

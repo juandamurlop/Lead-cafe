@@ -7,6 +7,14 @@ import psycopg
 from psycopg.rows import dict_row
 
 
+CAFETO_SINGLETONS = ("meta", "parametros")
+CAFETO_LISTS = (
+    "cooperativas", "fincas", "lotes", "insumos",
+    "fotos", "certificaciones", "expediente", "mensajes",
+)
+CAFETO_ACOPIO_SHEETS = ("acopio_recepcion", "acopio_consolidacion", "acopio_bodega")
+
+
 class PostgresStore:
     """Thin data access layer backed by PostgreSQL."""
 
@@ -27,6 +35,39 @@ class PostgresStore:
             """).fetchone()
             assert row is not None
             return row
+
+    def _cafeto_records(self, collections: tuple[str, ...]) -> list[dict[str, Any]]:
+        with self._connect() as conn:
+            return conn.execute(
+                "SELECT collection, data FROM cafeto_records WHERE collection = ANY(%s) ORDER BY collection, position",
+                (list(collections),),
+            ).fetchall()
+
+    def get_cafeto_base(self) -> dict[str, Any] | None:
+        """Assemble the Cafeto supervision base from cafeto_records, or None when empty."""
+        rows = self._cafeto_records(CAFETO_SINGLETONS + CAFETO_LISTS)
+        if not rows:
+            return None
+        base: dict[str, Any] = {name: [] for name in CAFETO_LISTS}
+        for row in rows:
+            if row["collection"] in CAFETO_SINGLETONS:
+                base[row["collection"]] = row["data"]
+            else:
+                base[row["collection"]].append(row["data"])
+        return base
+
+    def get_cafeto_acopio(self) -> dict[str, Any] | None:
+        """Assemble the acopio sheets (headers + rows keyed by header), or None when empty."""
+        rows = self._cafeto_records(("acopio_encabezados",) + CAFETO_ACOPIO_SHEETS)
+        if not rows:
+            return None
+        acopio: dict[str, Any] = {"encabezados": {}, "recepcion": [], "consolidacion": [], "bodega": []}
+        for row in rows:
+            if row["collection"] == "acopio_encabezados":
+                acopio["encabezados"] = row["data"]
+            else:
+                acopio[row["collection"].removeprefix("acopio_")].append(row["data"])
+        return acopio
 
     def mark_message_processed(self, source_message_id: str, wa_id: str) -> bool:
         """Record message ID atomically. Returns True if new, False if duplicate."""

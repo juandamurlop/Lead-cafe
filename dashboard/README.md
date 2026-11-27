@@ -17,7 +17,9 @@ npm run check
 npm run dev
 ```
 
-En desarrollo, Vite proxea `/api/*` hacia `http://localhost:7071` (Azure Functions). Si el backend no está encendido, el frontend usa `public/data/cafeto.json` en modo demostración.
+En desarrollo, Vite proxea `/api/*` hacia `http://localhost:7071` (Azure Functions). `/cafeto` lee la base desde `GET /api/cafeto/base` (tabla `cafeto_records`, migración `db/migrations/002_cafeto_records.sql`). La última base descargada queda en caché para abrir sin señal.
+
+Las hojas de acopio (Recepción, Consolidación, Bodega) también viven en `cafeto_records` y se sirven en `GET /api/cafeto/acopio`; el tablero reconstruye el libro en memoria y lo importa con su lector de Excel. Las ediciones siguen guardándose en el navegador. Los datos ficticios se cargan con `RUN_SEEDS=1 infra/scripts/deploy-backend.sh` (`db/seeds/002_cafeto_base.sql` y `003_acopio.sql`). Los archivos estáticos (`public/data/cafeto.json` y el libro) solo se usan con `VITE_DEMO_DATA=true`.
 
 Para compilar el paquete estático para Azure Static Web Apps (`dist/`):
 

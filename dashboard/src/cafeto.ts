@@ -11,7 +11,7 @@ import { vistaExpediente } from './views/expediente';
 import { vistaSecado } from './views/secado';
 import { vistaBodega } from './views/bodega';
 import { vistaAcopio } from './views/acopio';
-import { cargarDemo } from './data/excel';
+import { cargarAcopio } from './data/excel';
 
 interface ItemNav { id: Vista; nombre: string; icono: string; sub: string; grupo: string }
 
@@ -118,7 +118,7 @@ export function montarCafeto(root: HTMLElement, abrirCumplimiento: () => void): 
     const s = store.get();
     limpiarSlots();
     if (!base) {
-      mount(root, s.error ? pantallaCarga(s.error, true) : pantallaCarga('Cargando la base de 50 fincas…'));
+      mount(root, s.error ? pantallaCarga(s.error, true) : pantallaCarga('Cargando la base de fincas…'));
       return;
     }
 
@@ -150,7 +150,7 @@ export function montarCafeto(root: HTMLElement, abrirCumplimiento: () => void): 
   void cargarBase(url('data/cafeto.json'))
     .then(async (b) => {
       if (!activo) return;
-      await cargarDemo(b, url('data/Acopio_Hernan_vinculado_repo.xlsx')).catch((error) => console.warn('Cafeto sin datos ficticios de acopio', error));
+      await cargarAcopio(b, url('data/Acopio_Hernan_vinculado_repo.xlsx')).catch((error) => console.warn('Cafeto sin datos de acopio', error));
       if (!activo) return;
       base = b;
       store.set({ cargando: false });

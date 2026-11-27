@@ -3,6 +3,7 @@
  * que el tablero consulta. Es el equivalente a un repositorio: las vistas no
  * tocan los arreglos crudos.
  */
+import { apiUrl, demoData } from '../api/config';
 import type {
   BaseCafeto, Certificacion, Cooperativa, EstadoExpediente, FilaExpediente,
   Finca, Foto, Insumo, Lote, Mensaje,
@@ -176,11 +177,47 @@ export function cascoConvexo(pts: Array<[number, number]>): Array<[number, numbe
 
 let cache: Base | null = null;
 
-export async function cargarBase(url = 'data/cafeto.json'): Promise<Base> {
+const CACHE_OFFLINE = 'cafeto-base-api';
+const RUTA_API = '/api/cafeto/base';
+
+async function leerCache(): Promise<BaseCafeto | null> {
+  try {
+    const guardada = await (await caches.open(CACHE_OFFLINE)).match(RUTA_API);
+    return guardada ? await guardada.json() as BaseCafeto : null;
+  } catch {
+    return null;
+  }
+}
+
+async function desdeApi(): Promise<BaseCafeto> {
+  try {
+    const res = await fetch(apiUrl(RUTA_API), { cache: 'no-store', signal: AbortSignal.timeout(8000) });
+    if (!res.ok) throw new Error(`No se pudo cargar la base (${res.status})`);
+    const texto = await res.text();
+    // Última base buena para abrir Cafeto sin señal.
+    void caches.open(CACHE_OFFLINE)
+      .then((c) => c.put(RUTA_API, new Response(texto, { headers: { 'Content-Type': 'application/json' } })))
+      .catch(() => undefined);
+    return JSON.parse(texto) as BaseCafeto;
+  } catch (error) {
+    const guardada = await leerCache();
+    if (guardada) return guardada;
+    throw error;
+  }
+}
+
+export async function cargarBase(urlDemo = 'data/cafeto.json'): Promise<Base> {
   if (cache) return cache;
-  const res = await fetch(url);
-  if (!res.ok) throw new Error(`No se pudo cargar la base (${res.status})`);
-  cache = new Base(await res.json() as BaseCafeto);
+  let datos: BaseCafeto;
+  try {
+    datos = await desdeApi();
+  } catch (error) {
+    if (!demoData) throw error;
+    const res = await fetch(urlDemo);
+    if (!res.ok) throw new Error(`No se pudo cargar la base (${res.status})`);
+    datos = await res.json() as BaseCafeto;
+  }
+  cache = new Base(datos);
   return cache;
 }
 

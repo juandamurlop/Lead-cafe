@@ -1,6 +1,7 @@
 import { Workbook } from 'exceljs';
 import type { CellValue } from 'exceljs';
 import JSZip from 'jszip';
+import { apiUrl, demoData } from '../api/config';
 import { clases, destinos, hojas, origenes, guardar, leer, recomendar, registrar, consolidar, normalizar } from './operacion';
 import type { Entrega, Medicion, Movimiento } from './operacion';
 import type { Base } from './db';
@@ -97,7 +98,10 @@ function historial(serializado: string): Movimiento[] {
 }
 
 export async function importarExcel(buffer: ArrayBuffer, demo = false, base?: Base): Promise<number[]> {
-  const libro = await abrirLibro(buffer);
+  return importarLibro(await abrirLibro(buffer), demo, base);
+}
+
+export async function importarLibro(libro: Workbook, demo = false, base?: Base): Promise<number[]> {
   const conteos = [0, 0, 0];
   guardar((actual) => {
     if (demo && actual.demoCargada === libroDemo) return;
@@ -286,11 +290,39 @@ export async function importarExcel(buffer: ArrayBuffer, demo = false, base?: Ba
   return conteos;
 }
 
-export async function cargarDemo(base: Base, url: string): Promise<void> {
+type FilaAcopio = Record<string, string | number | boolean>;
+interface AcopioApi {
+  encabezados: Record<string, string[]>;
+  recepcion: FilaAcopio[];
+  consolidacion: FilaAcopio[];
+  bodega: FilaAcopio[];
+}
+
+/** Reconstruye en memoria las hojas del libro de acopio a partir de las filas de la base de datos. */
+function libroDesde(datos: AcopioApi): Workbook {
+  const libro = new Workbook();
+  const hojasApi: Array<[string, FilaAcopio[]]> = [
+    ['Recepción', datos.recepcion], ['Consolidación', datos.consolidacion], ['Bodega', datos.bodega],
+  ];
+  for (const [nombre, filas] of hojasApi) {
+    const encabezados = datos.encabezados[nombre] ?? [];
+    const hoja = libro.addWorksheet(nombre);
+    hoja.addRow(encabezados);
+    filas.forEach((fila) => hoja.addRow(encabezados.map((h) => fila[h] ?? null)));
+  }
+  return libro;
+}
+
+export async function cargarAcopio(base: Base, urlDemo: string): Promise<void> {
   if (leer().demoCargada === libroDemo) return;
-  const respuesta = await fetch(url);
-  if (!respuesta.ok) throw new Error('No se pudo cargar el libro ficticio incluido.');
-  await importarExcel(await respuesta.arrayBuffer(), true, base);
+  const respuesta = await fetch(apiUrl('/api/cafeto/acopio'), { cache: 'no-store', signal: AbortSignal.timeout(8000) }).catch(() => null);
+  if (respuesta?.ok) {
+    await importarLibro(libroDesde(await respuesta.json() as AcopioApi), true, base);
+    return;
+  }
+  const estatico = demoData ? await fetch(urlDemo) : null;
+  if (!estatico?.ok) throw new Error('No se pudieron cargar los datos de acopio.');
+  await importarExcel(await estatico.arrayBuffer(), true, base);
 }
 
 const fechaExcel = (iso: string) => new Date(Date.parse(iso) - 5 * 3600000);

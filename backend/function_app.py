@@ -9,6 +9,7 @@ import os
 import azure.functions as func
 from azure.storage.queue import QueueClient, TextBase64EncodePolicy
 
+from api.cafeto import handle_get_cafeto_acopio, handle_get_cafeto_base
 from api.lots import handle_get_lot, handle_list_lots, to_json
 from handlers.audio import handle_audio
 from services.gfw import GfwClient
@@ -37,6 +38,42 @@ def dashboard_summary(req: func.HttpRequest) -> func.HttpResponse:
 
     return func.HttpResponse(
         json.dumps(summary),
+        mimetype="application/json",
+        headers={"Cache-Control": "no-store"},
+    )
+
+
+@app.route(route="cafeto/base", methods=["GET"])
+def get_cafeto_base(req: func.HttpRequest) -> func.HttpResponse:
+    """Return the Cafeto supervision base (farms, lots, inputs, photos, compliance rows)."""
+    try:
+        store = PostgresStore(os.environ["DATABASE_URL"])
+        status_code, payload = handle_get_cafeto_base(store)
+    except Exception:
+        logging.exception("Could not load Cafeto base")
+        return func.HttpResponse(status_code=503)
+
+    return func.HttpResponse(
+        to_json(payload),
+        status_code=status_code,
+        mimetype="application/json",
+        headers={"Cache-Control": "no-store"},
+    )
+
+
+@app.route(route="cafeto/acopio", methods=["GET"])
+def get_cafeto_acopio(req: func.HttpRequest) -> func.HttpResponse:
+    """Return the acopio sheets (Recepción, Consolidación, Bodega) for the Cafeto dashboard."""
+    try:
+        store = PostgresStore(os.environ["DATABASE_URL"])
+        status_code, payload = handle_get_cafeto_acopio(store)
+    except Exception:
+        logging.exception("Could not load Cafeto acopio")
+        return func.HttpResponse(status_code=503)
+
+    return func.HttpResponse(
+        to_json(payload),
+        status_code=status_code,
         mimetype="application/json",
         headers={"Cache-Control": "no-store"},
     )

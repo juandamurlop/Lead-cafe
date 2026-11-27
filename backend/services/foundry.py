@@ -55,7 +55,7 @@ class FoundryClient:
         system = (
             "Extrae los datos de un lote de café de la transcripción de una nota de voz de un "
             "productor colombiano. Responde solo JSON con las claves: lot_name (string o null), "
-            "quantity (número o null), unit (kg, arrobas, cargas, sacos, libras o null; "kilos", "kilogramos" y la mala transcripción "kilómetros" significan kg), "
+            "quantity (número o null), unit (kg, arrobas, cargas, sacos, libras o null; 'kilos', 'kilogramos' y la mala transcripción 'kilómetros' significan kg), "
             "process (lavado, honey, natural u otro texto o null). Usa null si no se menciona."
         )
         body = {

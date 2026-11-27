@@ -6,6 +6,7 @@ import type {
   LotDetail,
   LotSummary,
 } from '../types/lot';
+import { apiUrl, demoData } from './config';
 
 export type DataSource = 'api' | 'demo';
 
@@ -134,12 +135,6 @@ async function loadDemoLots(): Promise<LotDetail[]> {
   return cachedDemoLots;
 }
 
-const API_BASE = ((import.meta as { env?: Record<string, string | undefined> }).env?.VITE_API_BASE_URL ?? '').replace(/\/+$/, '');
-
-function apiUrl(path: string): string {
-  return `${API_BASE}${path}`;
-}
-
 export async function fetchLots(
   gfwStatus: string,
   search: string,
@@ -158,10 +153,10 @@ export async function fetchLots(
       return { lots: data.lots, source: 'api' };
     }
   } catch {
-    // Fall back to demo fixture when backend API is offline.
+    // Backend unreachable: falls through to the demo fixture only when VITE_DEMO_DATA=true.
   }
 
-  let demo = await loadDemoLots();
+  let demo = demoData ? await loadDemoLots() : [];
   if (gfwStatus && gfwStatus !== 'all') {
     demo = demo.filter((lot) => lot.gfw_status === gfwStatus);
   }
@@ -191,10 +186,10 @@ export async function fetchLotByCode(lotCode: string): Promise<LotDetailResult> 
       return { lot: null, source: 'api' };
     }
   } catch {
-    // Fall back to demo fixture when backend API is offline.
+    // Backend unreachable: falls through to the demo fixture only when VITE_DEMO_DATA=true.
   }
 
-  const demo = await loadDemoLots();
+  const demo = demoData ? await loadDemoLots() : [];
   const match = demo.find((lot) => lot.lot_code === lotCode) ?? null;
   return { lot: match, source: 'demo' };
 }
