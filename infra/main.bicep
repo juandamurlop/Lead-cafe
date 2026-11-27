@@ -7,10 +7,16 @@ param projectName string = 'loteclaro'
 param environment string = 'dev'
 
 @description('Azure region for the resource group and all resources.')
-param location string = 'eastus2'
+param location string = 'canadacentral'
 
 @description('PostgreSQL administrator username.')
 param pgAdminUser string = 'loteadmin'
+
+@description('PostgreSQL Flexible Server SKU name.')
+param pgSkuName string = 'Standard_D2ds_v4'
+
+@description('PostgreSQL Flexible Server SKU tier.')
+param pgSkuTier string = 'GeneralPurpose'
 
 @secure()
 @description('PostgreSQL administrator password.')
@@ -60,6 +66,8 @@ module core 'resources.bicep' = {
     location: location
     pgAdminUser: pgAdminUser
     pgAdminPassword: pgAdminPassword
+    pgSkuName: pgSkuName
+    pgSkuTier: pgSkuTier
     whatsappVerifyToken: whatsappVerifyToken
     metaAppSecret: metaAppSecret
     whatsappAccessToken: whatsappAccessToken
@@ -76,3 +84,4 @@ output functionAppHostName string = core.outputs.functionAppHostName
 output postgresHost string = core.outputs.postgresHost
 output storageAccountName string = core.outputs.storageAccountName
 output foundryEndpoint string = core.outputs.foundryEndpoint
+output dashboardUrl string = core.outputs.dashboardUrl

@@ -1,4 +1,4 @@
-:root{
+:host{
   --bg:#f5f4f0; --surface:#fff; --surface-2:#faf9f6;
   --ink:#15130f; --mut:#6d675d; --faint:#9b958a;
   --line:#e5e2db; --line-2:#cfcac0;
@@ -12,8 +12,8 @@
   --sh:0 1px 2px rgba(20,18,14,.05),0 6px 20px -12px rgba(20,18,14,.18);
 }
 *{box-sizing:border-box;margin:0;padding:0}
-html,body{height:100%}
-body{
+:host{
+  display:block;
   font-family:Inter,system-ui,-apple-system,sans-serif;background:var(--bg);color:var(--ink);
   -webkit-font-smoothing:antialiased;line-height:1.5;font-size:15px;
 }
@@ -31,10 +31,11 @@ body{
 .navgrupo-t{font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--side-mut);
   padding:0 10px 7px;font-weight:600}
 .nav{list-style:none;display:flex;flex-direction:column;gap:2px}
-.nav-b{width:100%;display:flex;gap:11px;align-items:center;background:transparent;border:0;
+.nav-b{width:100%;display:flex;gap:11px;align-items:center;background:transparent;border:0;text-decoration:none;
   color:var(--side-mut);font:inherit;text-align:left;padding:9px 10px;border-radius:var(--r-s);
   cursor:pointer;transition:background .14s,color .14s}
 .nav-b:hover{background:var(--side-2);color:var(--side-ink)}
+.nav-b--enlace{width:auto}
 .nav-b.is-active{background:var(--side-2);color:#fff}
 .nav-b.is-active .nav-i{color:#7fd3a3}
 .nav-i{width:19px;text-align:center;font-size:14px;flex:none}

@@ -286,9 +286,9 @@ export async function importarExcel(buffer: ArrayBuffer, demo = false, base?: Ba
   return conteos;
 }
 
-export async function cargarDemo(base: Base): Promise<void> {
+export async function cargarDemo(base: Base, url: string): Promise<void> {
   if (leer().demoCargada === libroDemo) return;
-  const respuesta = await fetch('data/Acopio_Hernan_vinculado_repo.xlsx');
+  const respuesta = await fetch(url);
   if (!respuesta.ok) throw new Error('No se pudo cargar el libro ficticio incluido.');
   await importarExcel(await respuesta.arrayBuffer(), true, base);
 }
@@ -319,7 +319,7 @@ export async function exportarExcel(filtro?: Entrega[], mediciones?: Medicion[],
       return [c, [c.id, c.lote, fechaExcel(c.fecha), aportes.map((e) => e.productor).join('; '), aportes.map((e) => e.finca).join('; '), aportes.map((e) => e.kg).join('; '), aportes.reduce((kg, e) => kg + e.kg, 0), JSON.stringify(c.entregas), 'Aceptado', c.origen, c.ficticio ? 'Sí' : 'No']] as const;
     }),
     (mediciones ?? actual.mediciones).filter((m) => registroVisible(m.id) && (!coopId || m.coopId === coopId)).map((m) => [m, [m.id, fechaExcel(m.fecha), m.temperatura, m.humedad, m.zona, m.responsable, m.accion, m.alerta, m.ficticio ? 'Sí' : 'No', m.temperaturaExterior, m.humedadExterior, m.observaciones, m.coopId]] as const),
-  ];
+  ] as const;
   hojas.forEach((nombre, i) => {
     const h = libro.addWorksheet(nombre);
     const originales = (actual.encabezados[nombre] ?? []).filter((c) => clave(c) !== 'identificadorqr');

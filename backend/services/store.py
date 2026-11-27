@@ -127,3 +127,89 @@ class PostgresStore:
             conn.execute(insert_farm, (user_id, farm_name))
             conn.execute(update_user, (wa_id,))
             conn.commit()
+
+    def list_lots(
+        self,
+        gfw_status: str | None = None,
+        search: str | None = None,
+    ) -> list[dict[str, Any]]:
+        """List lots joined with farm polygons and producer info."""
+        clauses: list[str] = []
+        params: list[Any] = []
+        if gfw_status:
+            clauses.append("l.gfw_status = %s")
+            params.append(gfw_status)
+        if search:
+            like = f"%{search}%"
+            clauses.append("(l.lot_code ILIKE %s OR l.lot_name ILIKE %s OR f.name ILIKE %s OR u.name ILIKE %s)")
+            params.extend([like, like, like, like])
+
+        where_sql = f"WHERE {' AND '.join(clauses)}" if clauses else ""
+        sql = f"""
+            SELECT
+                l.id,
+                l.lot_code,
+                l.lot_name,
+                l.quantity,
+                l.unit,
+                l.process,
+                l.gfw_status,
+                l.evidence_blob_url,
+                l.created_at,
+                f.id AS farm_id,
+                f.name AS farm_name,
+                f.captured_at,
+                CASE
+                    WHEN f.boundary IS NOT NULL THEN ST_AsGeoJSON(f.boundary)::json
+                    ELSE NULL
+                END AS boundary_geojson,
+                u.name AS producer_name,
+                u.verified_by_coop
+            FROM lots l
+            JOIN farms f ON f.id = l.farm_id
+            JOIN users u ON u.id = l.user_id
+            {where_sql}
+            ORDER BY l.created_at DESC
+        """
+        with self._connect() as conn:
+            return conn.execute(sql, params).fetchall()
+
+    def get_lot_by_code(self, lot_code: str) -> dict[str, Any] | None:
+        """Fetch a single lot with its farm polygon and EPCIS 2.0 events."""
+        lot_sql = """
+            SELECT
+                l.id,
+                l.lot_code,
+                l.lot_name,
+                l.quantity,
+                l.unit,
+                l.process,
+                l.gfw_status,
+                l.evidence_blob_url,
+                l.created_at,
+                f.id AS farm_id,
+                f.name AS farm_name,
+                f.captured_at,
+                CASE
+                    WHEN f.boundary IS NOT NULL THEN ST_AsGeoJSON(f.boundary)::json
+                    ELSE NULL
+                END AS boundary_geojson,
+                u.name AS producer_name,
+                u.verified_by_coop
+            FROM lots l
+            JOIN farms f ON f.id = l.farm_id
+            JOIN users u ON u.id = l.user_id
+            WHERE l.lot_code = %s
+        """
+        events_sql = """
+            SELECT id, event_type, event_time, payload
+            FROM epcis_events
+            WHERE lot_id = %s
+            ORDER BY event_time ASC
+        """
+        with self._connect() as conn:
+            lot = conn.execute(lot_sql, (lot_code,)).fetchone()
+            if lot is None:
+                return None
+            lot["epcis_events"] = conn.execute(events_sql, (lot["id"],)).fetchall()
+            return lot

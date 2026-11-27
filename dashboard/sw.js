@@ -1,5 +1,5 @@
-const CACHE = 'cafeto-shell-v3';
-const assets = ['index.html', 'app.js', 'styles.css', 'data/cafeto.json', 'data/Acopio_Hernan_vinculado_repo.xlsx'];
+const CACHE = '__CAFETO_CACHE__';
+const assets = __CAFETO_ASSETS__;
 const scope = self.registration.scope;
 const shell = new Set(assets.map((asset) => new URL(asset, scope).href));
 
@@ -19,12 +19,14 @@ self.addEventListener('fetch', (event) => {
   const { request } = event;
   if (request.method !== 'GET') return;
   const url = new URL(request.url);
-  const navigation = request.mode === 'navigate' && (url.pathname === new URL(scope).pathname || shell.has(url.origin + url.pathname));
+  const cafeto = new URL('cafeto', scope);
+  const navigation = request.mode === 'navigate' && url.origin === cafeto.origin &&
+    (url.pathname === cafeto.pathname || url.pathname === cafeto.pathname + '/');
   if (!navigation && !shell.has(request.url)) return;
   const cachedUrl = navigation ? new URL('index.html', scope).href : request.url;
   event.respondWith(
     fetch(request).then(async (response) => {
-      if (response.ok) {
+      if (response.ok && !navigation) {
         const cache = await caches.open(CACHE);
         await cache.put(cachedUrl, response.clone());
       }

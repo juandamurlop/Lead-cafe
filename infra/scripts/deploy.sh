@@ -21,7 +21,7 @@ if [[ -f "${LOCAL_SETTINGS}" ]]; then
       export "${key}=${val}"
     fi
   done < <(python3 -c '
-import json, sys
+import json, sys, urllib.parse
 with open(sys.argv[1], "r", encoding="utf-8") as f:
     vals = json.load(f).get("Values", {})
 for k in (
@@ -33,6 +33,11 @@ for k in (
 ):
     if vals.get(k):
         print(f"{k}={vals[k]}")
+db_url = vals.get("DATABASE_URL", "")
+if db_url:
+    parsed = urllib.parse.urlparse(db_url)
+    if parsed.password:
+        print(f"PG_ADMIN_PASSWORD={urllib.parse.unquote(parsed.password)}")
 ' "${LOCAL_SETTINGS}")
 fi
 
@@ -42,11 +47,12 @@ if [[ -z "${PG_ADMIN_PASSWORD:-}" ]]; then
   export PG_ADMIN_PASSWORD
 fi
 
-LOCATION="${LOCATION:-eastus2}"
+LOCATION="${LOCATION:-canadacentral}"
 
+DEPLOYMENT_NAME="loteclaro-$(date +%Y%m%d-%H%M%S)"
 echo "Deploying Bicep template '${INFRA_DIR}/main.bicep' to '${LOCATION}'..."
 az deployment sub create \
-  --name "loteclaro-$(date +%Y%m%d-%H%M%S)" \
+  --name "${DEPLOYMENT_NAME}" \
   --location "${LOCATION}" \
   --template-file "${INFRA_DIR}/main.bicep" \
   --parameters "${INFRA_DIR}/main.bicepparam" \
@@ -59,3 +65,16 @@ az deployment sub create \
     foundryModel="${FOUNDRY_MODEL:-gpt-4o-transcribe}" \
     foundryModelVersion="${FOUNDRY_MODEL_VERSION:-2025-03-20}" \
     foundryModelSku="${FOUNDRY_MODEL_SKU:-GlobalStandard}"
+
+RG_NAME="$(az deployment sub show --name "${DEPLOYMENT_NAME}" --query 'properties.outputs.resourceGroupName.value' -o tsv)"
+STORAGE_ACCOUNT="$(az deployment sub show --name "${DEPLOYMENT_NAME}" --query 'properties.outputs.storageAccountName.value' -o tsv)"
+STORAGE_KEY="$(az storage account keys list --resource-group "${RG_NAME}" --account-name "${STORAGE_ACCOUNT}" --query '[0].value' -o tsv)"
+
+echo "Enabling static website hosting on '${STORAGE_ACCOUNT}'..."
+az storage blob service-properties update \
+  --account-name "${STORAGE_ACCOUNT}" \
+  --account-key "${STORAGE_KEY}" \
+  --static-website \
+  --index-document index.html \
+  --404-document index.html \
+  --output none

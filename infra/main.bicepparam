@@ -2,7 +2,6 @@ using 'main.bicep'
 
 param projectName = 'loteclaro'
 param environment = 'dev'
-param location = 'eastus2'
+param location = 'canadacentral'
 param pgAdminUser = 'loteadmin'
-// Pass secrets via CLI flags or environment variables during `az deployment sub create`,
-// e.g. --parameters pgAdminPassword='...' whatsappVerifyToken='...'
+param pgAdminPassword = readEnvironmentVariable('PG_ADMIN_PASSWORD')

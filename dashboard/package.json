@@ -1,17 +1,27 @@
 {
   "name": "cafeto-dashboard",
   "private": true,
+  "type": "module",
   "scripts": {
-    "build": "esbuild src/main.ts --bundle --minify --outfile=app.js",
-    "dev": "esbuild src/main.ts --bundle --outfile=app.js --servedir=. --serve=127.0.0.1:8000",
-    "check": "tsc --noEmit --target ES2022 --module ESNext --moduleResolution bundler src/main.ts"
-  },
-  "devDependencies": {
-    "esbuild": "0.28.2",
-    "typescript": "5.1.6"
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "check": "tsc --noEmit"
   },
   "dependencies": {
     "exceljs": "^4.4.0",
-    "jszip": "^3.10.1"
+    "jszip": "^3.10.1",
+    "leaflet": "^1.9.4",
+    "react": "^19.2.4",
+    "react-dom": "^19.2.4",
+    "react-router-dom": "^6.28.0"
+  },
+  "devDependencies": {
+    "@types/leaflet": "^1.9.21",
+    "@types/react": "^19.2.14",
+    "@types/react-dom": "^19.2.34",
+    "@vitejs/plugin-react": "^4.3.4",
+    "typescript": "5.1.6",
+    "vite": "^5.4.11"
   }
 }

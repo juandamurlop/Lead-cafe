@@ -9,6 +9,7 @@ import os
 import azure.functions as func
 from azure.storage.queue import QueueClient
 
+from api.lots import handle_get_lot, handle_list_lots, to_json
 from handlers.registration import handle_registration
 from services.foundry import FoundryClient
 from services.store import PostgresStore
@@ -33,6 +34,47 @@ def dashboard_summary(req: func.HttpRequest) -> func.HttpResponse:
 
     return func.HttpResponse(
         json.dumps(summary),
+        mimetype="application/json",
+        headers={"Cache-Control": "no-store"},
+    )
+
+
+@app.route(route="lots", methods=["GET"])
+def list_lots(req: func.HttpRequest) -> func.HttpResponse:
+    """Return lots, EUDR farm polygons, and GFW statuses for the compliance dashboard."""
+    try:
+        store = PostgresStore(os.environ["DATABASE_URL"])
+        status_code, payload = handle_list_lots(
+            store,
+            gfw_status=req.params.get("gfw_status"),
+            search=req.params.get("search"),
+        )
+    except Exception:
+        logging.exception("Could not list lots")
+        return func.HttpResponse(status_code=503)
+
+    return func.HttpResponse(
+        to_json(payload),
+        status_code=status_code,
+        mimetype="application/json",
+        headers={"Cache-Control": "no-store"},
+    )
+
+
+@app.route(route="lots/{lot_code}", methods=["GET"])
+def get_lot(req: func.HttpRequest) -> func.HttpResponse:
+    """Return a single lot's polygon, evidence link, and EPCIS 2.0 timeline."""
+    lot_code = req.route_params.get("lot_code", "")
+    try:
+        store = PostgresStore(os.environ["DATABASE_URL"])
+        status_code, payload = handle_get_lot(store, lot_code)
+    except Exception:
+        logging.exception("Could not fetch lot %s", lot_code)
+        return func.HttpResponse(status_code=503)
+
+    return func.HttpResponse(
+        to_json(payload),
+        status_code=status_code,
         mimetype="application/json",
         headers={"Cache-Control": "no-store"},
     )

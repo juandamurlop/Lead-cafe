@@ -26,15 +26,12 @@ const NAV: ItemNav[] = [
 ];
 
 const VALIDAS = new Set<string>(NAV.map((n) => n.id));
-let base: Base | null = null;
-let vistaMontada: Vista | null = null;
-
 function irA(v: Vista): void {
   if (location.hash.slice(1) !== v) location.hash = v;
   else store.set({ vista: v });
 }
 
-function sidebar(): HTMLElement {
+function sidebar(abrirCumplimiento: () => void): HTMLElement {
   const grupos = [...new Set(NAV.map((n) => n.grupo))];
   return h('nav', { class: 'side', 'aria-label': 'Secciones' },
     h('div', { class: 'brand' },
@@ -54,6 +51,11 @@ function sidebar(): HTMLElement {
         )),
       ))),
     )),
+    h('a', { href: import.meta.env.BASE_URL, class: 'nav-b nav-b--enlace', text: 'Cumplimiento EUDR', onClick: (ev: MouseEvent) => {
+      if (ev.button || ev.altKey || ev.ctrlKey || ev.metaKey || ev.shiftKey) return;
+      ev.preventDefault();
+      abrirCumplimiento();
+    } }),
     h('footer', { class: 'side-f' },
       h('p', { text: 'Base de 50 fincas ficticias. Gravimet de Cenicafé, ecuación de Magnus y precio interno FNC del 25-nov-2026.' }),
     ),
@@ -103,54 +105,65 @@ function pantallaCarga(mensaje: string, error = false): HTMLElement {
   );
 }
 
-function montar(): void {
-  const root = document.getElementById('app');
-  if (!root) return;
-  const s = store.get();
-  limpiarSlots();
+export function montarCafeto(root: HTMLElement, abrirCumplimiento: () => void): () => void {
+  let base: Base | null = null;
+  let vistaMontada: Vista | null = null;
+  let activo = true;
+  const actualizarRuta = () => {
+    const hash = location.hash.slice(1);
+    store.set({ vista: VALIDAS.has(hash) ? hash as Vista : 'mapa' });
+  };
 
-  if (!base) {
-    mount(root, s.error ? pantallaCarga(s.error, true) : pantallaCarga('Cargando la base de 50 fincas…'));
-    vistaMontada = null;
-    return;
+  function montar(): void {
+    const s = store.get();
+    limpiarSlots();
+    if (!base) {
+      mount(root, s.error ? pantallaCarga(s.error, true) : pantallaCarga('Cargando la base de 50 fincas…'));
+      return;
+    }
+
+    mount(root,
+      sidebar(abrirCumplimiento),
+      h('main', { class: 'content' }, topbar(), cuerpo(base, s.vista)),
+      slot(() => h('div', { class: 'toasts', role: 'status', 'aria-live': 'polite' },
+        ...store.get().toasts.map((t) => h('div', { class: `toast toast--${t.tono}`, text: t.texto })),
+      )),
+    );
+    vistaMontada = s.vista;
+    root.querySelector('.content')?.scrollTo({ top: 0 });
   }
 
-  mount(root,
-    sidebar(),
-    h('main', { class: 'content' }, topbar(), cuerpo(base, s.vista)),
-    slot(() => h('div', { class: 'toasts', role: 'status', 'aria-live': 'polite' },
-      ...store.get().toasts.map((t) => h('div', { class: `toast toast--${t.tono}`, text: t.texto })),
-    )),
-  );
-  vistaMontada = s.vista;
-  document.querySelector('.content')?.scrollTo({ top: 0 });
-}
-
-store.subscribe(() => {
-  const s = store.get();
-  if (!base || s.vista !== vistaMontada) montar();
-  else refrescarSlots();
-});
-
-window.addEventListener('hashchange', () => {
-  const hash = location.hash.slice(1);
-  if (VALIDAS.has(hash)) store.set({ vista: hash as Vista });
-});
-
-const hashInicial = location.hash.slice(1);
-if (VALIDAS.has(hashInicial)) store.set({ vista: hashInicial as Vista });
-montar();
-
-if ('serviceWorker' in navigator) {
-  void navigator.serviceWorker.register('sw.js').catch((error) => console.warn('Cafeto sin caché offline', error));
-}
-
-cargarBase()
-  .then(async (b) => {
-    await cargarDemo(b).catch((error) => console.warn('Cafeto sin datos ficticios de acopio', error));
-    base = b;
-    store.set({ cargando: false });
-  })
-  .catch((e: unknown) => {
-    store.set({ cargando: false, error: `No se pudo cargar la base: ${String(e)}` });
+  store.set({ cargando: true, error: null });
+  actualizarRuta();
+  const desuscribir = store.subscribe(({ vista }) => {
+    if (!base || vista !== vistaMontada) montar();
+    else refrescarSlots();
   });
+  window.addEventListener('hashchange', actualizarRuta);
+  montar();
+
+  const url = (ruta: string) => `${import.meta.env.BASE_URL}${ruta}`;
+  if (import.meta.env.PROD && 'serviceWorker' in navigator) {
+    void navigator.serviceWorker.register(url('sw.js')).catch((error) => console.warn('Cafeto sin caché offline', error));
+  }
+
+  void cargarBase(url('data/cafeto.json'))
+    .then(async (b) => {
+      if (!activo) return;
+      await cargarDemo(b, url('data/Acopio_Hernan_vinculado_repo.xlsx')).catch((error) => console.warn('Cafeto sin datos ficticios de acopio', error));
+      if (!activo) return;
+      base = b;
+      store.set({ cargando: false });
+    })
+    .catch((e: unknown) => {
+      if (activo) store.set({ cargando: false, error: `No se pudo cargar la base: ${String(e)}` });
+    });
+
+  return () => {
+    activo = false;
+    desuscribir();
+    window.removeEventListener('hashchange', actualizarRuta);
+    limpiarSlots();
+    mount(root);
+  };
+}

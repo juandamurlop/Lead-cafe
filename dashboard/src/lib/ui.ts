@@ -61,7 +61,7 @@ export function slider(opts: {
 
 /** Sincroniza un slider desde fuera, sin disparar su manejador. */
 export function fijarSlider(id: string, valor: number): void {
-  const el = document.getElementById(id) as HTMLInputElement | null;
+  const el = document.querySelector('[data-cafeto-shell]')?.shadowRoot?.getElementById(id) as HTMLInputElement | null;
   if (!el) return;
   el.value = String(valor);
   const out = el.parentElement?.querySelector('.sl-out');
