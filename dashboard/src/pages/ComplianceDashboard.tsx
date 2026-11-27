@@ -66,6 +66,7 @@ export function ComplianceDashboard() {
           <h1>Tablero de Trazabilidad y Debida Diligencia</h1>
         </div>
         <div className="topbar-badges">
+          <Link to="/cafeto">Abrir Cafeto</Link>
           <span className={`badge badge--${source === 'api' ? 'ok' : 'warn'}`}>
             {source === 'api' ? 'PostgreSQL en vivo' : 'Modo demostración (cafeto.json)'}
           </span>

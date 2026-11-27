@@ -1,4 +1,4 @@
-:root{
+:host{
   --bg:#f5f4f0; --surface:#fff; --surface-2:#faf9f6;
   --ink:#15130f; --mut:#6d675d; --faint:#9b958a;
   --line:#e5e2db; --line-2:#cfcac0;
@@ -12,8 +12,8 @@
   --sh:0 1px 2px rgba(20,18,14,.05),0 6px 20px -12px rgba(20,18,14,.18);
 }
 *{box-sizing:border-box;margin:0;padding:0}
-html,body{height:100%}
-body{
+:host{
+  display:block;
   font-family:Inter,system-ui,-apple-system,sans-serif;background:var(--bg);color:var(--ink);
   -webkit-font-smoothing:antialiased;line-height:1.5;font-size:15px;
 }
@@ -31,10 +31,11 @@ body{
 .navgrupo-t{font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--side-mut);
   padding:0 10px 7px;font-weight:600}
 .nav{list-style:none;display:flex;flex-direction:column;gap:2px}
-.nav-b{width:100%;display:flex;gap:11px;align-items:center;background:transparent;border:0;
+.nav-b{width:100%;display:flex;gap:11px;align-items:center;background:transparent;border:0;text-decoration:none;
   color:var(--side-mut);font:inherit;text-align:left;padding:9px 10px;border-radius:var(--r-s);
   cursor:pointer;transition:background .14s,color .14s}
 .nav-b:hover{background:var(--side-2);color:var(--side-ink)}
+.nav-b--enlace{width:auto}
 .nav-b.is-active{background:var(--side-2);color:#fff}
 .nav-b.is-active .nav-i{color:#7fd3a3}
 .nav-i{width:19px;text-align:center;font-size:14px;flex:none}
@@ -420,3 +421,42 @@ body{
 @media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 .guia{stroke:var(--line-2);stroke-width:1;fill:none}
 .zona-c{fill:var(--accent);opacity:.55}
+.op-secciones{display:grid;grid-column:1/-1;gap:18px;min-width:0}
+.op-secciones .kpis{grid-template-columns:repeat(auto-fit,minmax(min(100%,150px),1fr))}
+.op-form{display:flex;align-items:end;flex-wrap:wrap;gap:12px;margin:12px 0}
+.op-campo{display:grid;gap:4px;font-size:13px;font-weight:600;min-width:0}
+.op-campo input,.op-campo select{max-width:100%;min-height:35px;padding:6px 9px;font:inherit;font-weight:400;color:var(--ink);background:var(--surface-2);border:1px solid var(--line-2);border-radius:var(--r-s)}
+.op-scroll{overflow-x:auto;margin:12px 0}
+.op-tabla{border-collapse:collapse;width:100%;font-size:13px}
+.op-tabla th,.op-tabla td{padding:8px 10px;text-align:left;vertical-align:top;border-bottom:1px solid var(--line-2);white-space:pre-line}
+.op-tabla th{background:var(--surface-2)}
+.op-acciones{display:flex;gap:5px;white-space:nowrap}
+.op-estado,.op-resultados{min-height:1em}
+.op-graficos{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,260px),1fr));gap:14px}
+.op-grafico ul{list-style:none;margin:8px 0;padding:0;max-height:310px;overflow:auto}
+.op-grafico li{display:grid;grid-template-columns:minmax(72px,1fr) minmax(45px,1fr) auto;align-items:center;gap:8px;font-size:13px}
+.op-grafico meter{width:100%}
+.op-curva{max-width:690px}
+.op-procedencia{display:flex;flex-wrap:wrap;gap:8px;list-style:none;padding:0}
+.op-procedencia li{padding:8px 12px;background:var(--surface-2);border:1px solid var(--line);border-radius:var(--r-s)}
+.op-procedencia .op-total{flex-basis:100%;background:var(--accent-soft);font-weight:650}
+.mapa-explorador{display:grid;grid-template-columns:minmax(0,3fr) minmax(0,2fr);gap:18px;align-items:start}
+.mapa-explorador--amplio{grid-template-columns:minmax(0,2fr) minmax(0,3fr)}
+.mapa-explorador .mapa{max-height:min(72vh,760px)}
+.mapa-panel{max-height:min(88vh,1050px);overscroll-behavior:contain}
+.mapa-panel>.btn{margin-bottom:10px}
+.mapa-panel .op-secciones{gap:10px}
+.mapa-panel .op-secciones .card{padding:12px}
+.mapa-panel .op-secciones .kpis{grid-template-columns:repeat(auto-fit,minmax(min(100%,120px),1fr))}
+.mapa-panel .op-secciones [hidden]{display:none}
+.mapa-resultados{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:8px;max-height:120px;overflow:auto}
+.mapa .nodo--asociado .finca-pt{stroke-width:2.5px;stroke:var(--accent)}
+.mapa .predio-poly--red{cursor:pointer;stroke-width:1.6px}
+.mapa [role=button]:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
+.mapa .zona:hover{fill:var(--accent-soft)}
+@media(max-width:850px){
+  .mapa-explorador,.mapa-explorador--amplio{grid-template-columns:minmax(0,1fr)}
+  .mapa-panel{max-height:none;overflow:visible}
+  .mapa-panel>.btn{display:none}
+  .mapa-explorador .mapa{max-height:55vh}
+}
