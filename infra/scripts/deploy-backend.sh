@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Apply db/migrations/*.sql to the deployed PostgreSQL server (idempotent) and
-# publish backend/ to the Azure Function App.
+# Apply pending db/migrations/*.sql to the deployed PostgreSQL server with dbmate
+# (tracked in schema_migrations) and publish backend/ to the Azure Function App.
 #
 # Optional env vars:
 #   RG_NAME          resource group (default: rg-loteclaro-dev)
@@ -10,7 +10,7 @@ set -euo pipefail
 #   SKIP_MIGRATIONS  set to 1 to only publish the code
 #   RUN_SEEDS        set to 1 to also apply db/seeds/*.sql (demo data)
 #
-# Requires: az (logged in), psql, zip, curl.
+# Requires: az (logged in), dbmate, psql (only for RUN_SEEDS), zip, curl.
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 INFRA_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
@@ -30,6 +30,10 @@ if [[ -z "${FUNCTION_APP}" ]]; then
 fi
 
 if [[ "${SKIP_MIGRATIONS:-0}" != "1" ]]; then
+  if ! command -v dbmate >/dev/null 2>&1; then
+    echo "Error: dbmate not found. Install it (brew install dbmate) or set SKIP_MIGRATIONS=1." >&2
+    exit 1
+  fi
   PG_SERVER="$(az postgres flexible-server list -g "${RG_NAME}" --query '[0].name' -o tsv)"
   if [[ -z "${PG_SERVER}" ]]; then
     echo "Error: No PostgreSQL server found in resource group '${RG_NAME}'." >&2
@@ -53,15 +57,18 @@ if [[ "${SKIP_MIGRATIONS:-0}" != "1" ]]; then
     --start-ip-address "${MY_IP}" --end-ip-address "${MY_IP}" --output none
   trap 'az postgres flexible-server firewall-rule delete -g "${RG_NAME}" --server-name "${PG_SERVER}" --name "${RULE_NAME}" --yes --output none || true' EXIT
 
-  shopt -s nullglob
-  SQL_FILES=("${DB_DIR}"/migrations/*.sql)
+  # dbmate records applied versions in schema_migrations, so only new files run.
+  echo "Applying pending migrations with dbmate..."
+  DATABASE_URL="${DATABASE_URL}" dbmate \
+    --migrations-dir "${DB_DIR}/migrations" --no-dump-schema up
+
   if [[ "${RUN_SEEDS:-0}" == "1" ]]; then
-    SQL_FILES+=("${DB_DIR}"/seeds/*.sql)
+    shopt -s nullglob
+    for f in "${DB_DIR}"/seeds/*.sql; do
+      echo "Applying ${f#"${ROOT_DIR}/"}..."
+      psql "${DATABASE_URL}" -v ON_ERROR_STOP=1 -q -f "${f}"
+    done
   fi
-  for f in "${SQL_FILES[@]}"; do
-    echo "Applying ${f#"${ROOT_DIR}/"}..."
-    psql "${DATABASE_URL}" -v ON_ERROR_STOP=1 -q -f "${f}"
-  done
 fi
 
 echo "Publishing '${BACKEND_DIR}' to Function App '${FUNCTION_APP}'..."

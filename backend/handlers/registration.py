@@ -2,7 +2,10 @@
 
 from __future__ import annotations
 
+import logging
 from typing import Any, Protocol
+
+logger = logging.getLogger(__name__)
 
 
 CONSENT_PROMPT = (
@@ -78,9 +81,14 @@ def handle_registration(
     """
     wa_id = str(message["wa_id"])
     user = store.get_user_by_wa_id(wa_id)
+    tag = f"...{wa_id[-4:]}"
+    logger.info(
+        "Registration check for %s: state=%s", tag, user["registration_state"] if user else "new"
+    )
 
     if user is None:
         store.create_pending_user(wa_id)
+        logger.info("Sending consent prompt to %s (new user)", tag)
         whatsapp.send_consent_buttons(wa_id, CONSENT_PROMPT)
         return True
 
@@ -90,17 +98,21 @@ def handle_registration(
 
     if state == "declined":
         store.create_pending_user(wa_id)
+        logger.info("Sending consent prompt to %s (previously declined)", tag)
         whatsapp.send_consent_buttons(wa_id, CONSENT_PROMPT)
         return True
 
     if state == "awaiting_consent":
         if _is_consent_accepted(message):
             store.accept_consent(wa_id)
+            logger.info("%s accepted consent; asked for name", tag)
             whatsapp.send_text(wa_id, ASK_NAME_PROMPT)
         elif _is_consent_declined(message):
             store.decline_consent(wa_id)
+            logger.info("%s declined consent", tag)
             whatsapp.send_text(wa_id, DECLINED_REPLY)
         else:
+            logger.info("Re-sending consent prompt to %s (unrecognized reply)", tag)
             whatsapp.send_consent_buttons(wa_id, CONSENT_PROMPT)
         return True
 
@@ -110,6 +122,7 @@ def handle_registration(
             whatsapp.send_text(wa_id, ASK_NAME_PROMPT)
             return True
         store.save_user_name(wa_id, name)
+        logger.info("%s name saved; asked for farm", tag)
         whatsapp.send_text(wa_id, ASK_FARM_PROMPT)
         return True
 
@@ -119,6 +132,7 @@ def handle_registration(
             whatsapp.send_text(wa_id, ASK_FARM_PROMPT)
             return True
         store.complete_registration_with_farm(user["id"], wa_id, farm_name)
+        logger.info("%s registration complete", tag)
         display_name = user.get("name") or "productor"
         whatsapp.send_text(wa_id, COMPLETE_REPLY_TEMPLATE.format(name=display_name))
         return True

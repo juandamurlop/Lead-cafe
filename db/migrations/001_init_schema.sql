@@ -1,3 +1,4 @@
+-- migrate:up
 -- Lote Claro: Initial PostgreSQL + PostGIS schema
 -- Matches docs/architecture/db.md and docs/architecture/registration.md
 
@@ -77,3 +78,11 @@ CREATE INDEX IF NOT EXISTS idx_location_pins_point_gist ON location_pins USING G
 CREATE INDEX IF NOT EXISTS idx_lots_farm_id ON lots (farm_id);
 CREATE INDEX IF NOT EXISTS idx_lots_user_id ON lots (user_id);
 CREATE INDEX IF NOT EXISTS idx_epcis_events_lot_id ON epcis_events (lot_id);
+
+-- migrate:down
+DROP TABLE IF EXISTS processed_messages;
+DROP TABLE IF EXISTS epcis_events;
+DROP TABLE IF EXISTS lots;
+DROP TABLE IF EXISTS location_pins;
+DROP TABLE IF EXISTS farms;
+DROP TABLE IF EXISTS users;

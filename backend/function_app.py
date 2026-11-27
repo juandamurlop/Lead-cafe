@@ -101,16 +101,25 @@ def whatsapp_webhook(req: func.HttpRequest) -> func.HttpResponse:
     app_secret = os.environ.get("META_APP_SECRET", "")
     signature = req.headers.get("X-Hub-Signature-256")
     if not verify_signature(raw_body, signature, app_secret):
+        logging.warning(
+            "Webhook rejected: invalid signature (header present=%s, app secret set=%s)",
+            bool(signature),
+            bool(app_secret),
+        )
         return func.HttpResponse("Invalid signature", status_code=403)
 
     try:
         payload = json.loads(raw_body.decode("utf-8"))
     except (UnicodeDecodeError, json.JSONDecodeError):
+        logging.warning("Webhook rejected: invalid JSON body")
         return func.HttpResponse("Invalid JSON", status_code=400)
 
     envelopes = extract_messages(payload)
     if envelopes:
         enqueue_messages(envelopes, _get_queue_client())
+        logging.info("Webhook enqueued %d message(s)", len(envelopes))
+    else:
+        logging.info("Webhook received payload with no inbound messages (e.g. status update)")
 
     return func.HttpResponse("OK", status_code=200)
 
@@ -125,6 +134,9 @@ def process_whatsapp_message(msg: func.QueueMessage) -> None:
     envelope = json.loads(msg.get_body().decode("utf-8"))
     source_message_id = envelope["source_message_id"]
     wa_id = envelope["wa_id"]
+    logging.info(
+        "Processing message %s type=%s from ...%s", source_message_id, envelope.get("type"), wa_id[-4:]
+    )
 
     store = PostgresStore(os.environ["DATABASE_URL"])
     if not store.mark_message_processed(source_message_id, wa_id):
@@ -143,6 +155,7 @@ def process_whatsapp_message(msg: func.QueueMessage) -> None:
 
     handled = handle_registration(envelope, store, whatsapp, foundry)
     if handled:
+        logging.info("Message %s handled by registration flow", source_message_id)
         return
 
     logging.info("Registered user %s sent message type %s (handlers pending)", wa_id, envelope.get("type"))
