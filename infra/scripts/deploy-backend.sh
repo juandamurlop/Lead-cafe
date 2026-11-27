@@ -65,19 +65,55 @@ if [[ "${SKIP_MIGRATIONS:-0}" != "1" ]]; then
 fi
 
 echo "Publishing '${BACKEND_DIR}' to Function App '${FUNCTION_APP}'..."
-ZIP_FILE="$(mktemp -t loteclaro-backend-XXXXXX.zip)"
-rm -f "${ZIP_FILE}"
+BUILD_DIR="$(mktemp -d)"
+trap 'rm -rf "${BUILD_DIR}"' EXIT
+cp -R "${BACKEND_DIR}/." "${BUILD_DIR}/"
+rm -f "${BUILD_DIR}/local.settings.json"
+rm -rf "${BUILD_DIR}/.venv" "${BUILD_DIR}/__pycache__" "${BUILD_DIR}/.pytest_cache" "${BUILD_DIR}/.git"
+
+python3 -m pip install --quiet \
+  --target "${BUILD_DIR}/.python_packages/lib/site-packages" \
+  --platform manylinux2014_x86_64 \
+  --implementation cp \
+  --python-version 3.11 \
+  --only-binary=:all: \
+  -r "${BUILD_DIR}/requirements.txt"
+
+ZIP_FILE="${BUILD_DIR}/backend.zip"
 (
-  cd "${BACKEND_DIR}"
-  zip -qr "${ZIP_FILE}" . \
-    -x 'local.settings.json' '.venv/*' '__pycache__/*' '*/__pycache__/*' '.pytest_cache/*' '*/.pytest_cache/*' '.git/*'
+  cd "${BUILD_DIR}"
+  zip -qr "${ZIP_FILE}" . -x 'tests/*' '*/__pycache__/*'
 )
-az functionapp deployment source config-zip \
-  -g "${RG_NAME}" \
-  -n "${FUNCTION_APP}" \
-  --src "${ZIP_FILE}" \
-  --build-remote true
-rm -f "${ZIP_FILE}"
+
+ACCESS_TOKEN="$(az account get-access-token --resource https://management.azure.com/ --query accessToken -o tsv)"
+PUBLISH_HEADERS="$(mktemp)"
+curl -fsS -D "${PUBLISH_HEADERS}" -o /dev/null \
+  -H "Authorization: Bearer ${ACCESS_TOKEN}" \
+  -H "Content-Type: application/zip" \
+  -X POST --data-binary @"${ZIP_FILE}" \
+  "https://${FUNCTION_APP}.scm.azurewebsites.net/api/publish"
+
+DEPLOY_STATUS_URL="$(awk 'tolower($1)=="location:" {gsub(/\r/,"",$2); print $2}' "${PUBLISH_HEADERS}")"
+rm -f "${PUBLISH_HEADERS}"
+
+if [[ -n "${DEPLOY_STATUS_URL}" ]]; then
+  for _ in $(seq 1 60); do
+    DEPLOY_JSON="$(curl -fsS -H "Authorization: Bearer ${ACCESS_TOKEN}" "${DEPLOY_STATUS_URL}")"
+    read -r IS_COMPLETE DEPLOY_STATUS STATUS_TEXT < <(python3 -c '
+import json, sys
+d = json.load(sys.stdin)
+print(int(bool(d.get("complete"))), d.get("status", 0), (d.get("status_text") or "").replace("\n", " "))
+' <<< "${DEPLOY_JSON}")
+    if [[ "${IS_COMPLETE}" == "1" ]]; then
+      if [[ "${DEPLOY_STATUS}" != "4" ]]; then
+        echo "Error: Deployment failed (status=${DEPLOY_STATUS}): ${STATUS_TEXT}" >&2
+        exit 1
+      fi
+      break
+    fi
+    sleep 3
+  done
+fi
 
 FUNCTION_HOST="$(az functionapp show -g "${RG_NAME}" -n "${FUNCTION_APP}" --query defaultHostName -o tsv)"
 echo "Backend deployed: https://${FUNCTION_HOST}"
