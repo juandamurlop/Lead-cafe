@@ -101,4 +101,35 @@ WhatsApp Cloud API ──webhook──▶ Azure Function (HTTPS endpoint)
 4. Store lots in Cosmos DB or even a Postgres/JSON file.
 5. Add a simple Power BI or web page showing lots on a map, so judges see the result.
 
+## 7. Deforestation evidence with Global Forest Watch
+
+Decision: use **Global Forest Watch (GFW)** for the non-deforestation check, and keep our own database of the locations the producers send.
+
+**What we can deliver (EUDR):** "Pueden entregar polígonos GPS por finca y la fecha de captura, más la documentación (imágenes satelitales o certificaciones) que pruebe no deforestación por lote."
+
+- **Per farm:** the GPS polygon plus the capture date.
+- **Per lot:** the documentation proving no deforestation, meaning satellite imagery or certifications.
+
+**Locations database:** every location a producer sends over WhatsApp is recorded. Minimum fields:
+
+| Field | Notes |
+|---|---|
+| `farmer_id` / `phone` | Mapped to the farmer record, verified by the cooperative |
+| `farm_id` | One farmer can have several farms |
+| `geometry` | Point from a location pin, or the polygon assembled from several pins |
+| `captured_at` | Capture date, which EUDR asks for |
+| `source_message_id` | WhatsApp message ID, for deduplication and audit |
+| `consent` | Consent record and revocation status |
+
+**Flow:**
+1. The farmer sends location pins over WhatsApp, and the bot stores them in the locations database with the capture date.
+2. Once a polygon exists, query GFW for tree-cover loss and deforestation alerts (GLAD) on that polygon, relative to the EUDR cutoff date (31 December 2020).
+3. Save the result and the evidence (satellite imagery or the GFW report, plus any certifications) against each lot.
+4. Laura (compliance) and Anke (buyer) read the polygon, capture date and evidence per lot from the due-diligence report or the QR page.
+
+**Open questions:**
+- Confirm which GFW access we use (Data API or the GFW Pro tools) and its rate limits.
+- Decide where evidence files live (Blob Storage, linked from the lot record).
+- Decide how we handle a polygon with alerts: flag it for review rather than reject it automatically.
+
 If you tell me your stack (Python or Node, Azure or local), I can scaffold the webhook, the voice-note-to-JSON pipeline and a mock sender so you can test without WhatsApp. The mock needs no accounts.
