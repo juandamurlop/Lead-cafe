@@ -1,4 +1,5 @@
 import { h } from '../lib/dom';
+import { registroBodega } from './registro-bodega';
 import { slot } from '../lib/reactive';
 import { barras, franja24 } from '../lib/charts';
 import { boton, callout, card, fijarSlider, fila, grid, money, nota, pill, readout, slider } from '../lib/ui';
@@ -96,8 +97,9 @@ export function vistaBodega(): HTMLElement {
   const s = store.get();
 
   return grid(
-    card('Dos sensores, una decisión',
-      'Un nodo dentro de la bodega y otro afuera a la sombra. ESP32 con sensor de temperatura y humedad relativa: COP 150.000 a 250.000 cada uno, sin internet.',
+    registroBodega(),
+    card('Instrumento de ventilación',
+      'Simula una lectura interior y otra exterior para comparar las condiciones del aire.',
       h('h3', { class: 'h3', text: 'Dentro de la bodega' }),
       h('div', { class: 'stack2' },
         slider({ id: IDS.tIn, label: 'Temperatura', min: 14, max: 34, step: 0.5, value: s.dentro.t, sufijo: ' °C',

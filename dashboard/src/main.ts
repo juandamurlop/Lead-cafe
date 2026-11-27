@@ -11,12 +11,13 @@ import { vistaExpediente } from './views/expediente';
 import { vistaSecado } from './views/secado';
 import { vistaBodega } from './views/bodega';
 import { vistaAcopio } from './views/acopio';
+import { cargarDemo } from './data/excel';
 
 interface ItemNav { id: Vista; nombre: string; icono: string; sub: string; grupo: string }
 
 const NAV: ItemNav[] = [
-  { id: 'panorama', nombre: 'Panorama', icono: '◉', sub: 'todo de un vistazo', grupo: 'Datos' },
   { id: 'mapa', nombre: 'Mapa', icono: '⬡', sub: 'zonas, acopios, fincas', grupo: 'Datos' },
+  { id: 'panorama', nombre: 'Panorama', icono: '◉', sub: 'todo de un vistazo', grupo: 'Datos' },
   { id: 'cadena', nombre: 'Cadena', icono: '⇄', sub: 'etapa por etapa', grupo: 'Datos' },
   { id: 'expediente', nombre: 'Expediente', icono: '▤', sub: 'EUDR · Laura', grupo: 'Datos' },
   { id: 'secado', nombre: 'Secado', icono: '☀', sub: 'Rosa Elvira', grupo: 'Instrumentos' },
@@ -29,8 +30,8 @@ let base: Base | null = null;
 let vistaMontada: Vista | null = null;
 
 function irA(v: Vista): void {
-  store.set({ vista: v });
   if (location.hash.slice(1) !== v) location.hash = v;
+  else store.set({ vista: v });
 }
 
 function sidebar(): HTMLElement {
@@ -67,7 +68,7 @@ function topbar(): HTMLElement {
       return h('div', { class: 'top-in' },
         h('div', { class: `netpill netpill--${estado}` },
           h('span', { class: 'netdot' }),
-          h('strong', { text: RED_TEXTO[red].nombre }),
+          h('strong', { text: `Simulación · ${RED_TEXTO[red].nombre}` }),
         ),
         h('p', { class: 'net-detail', text: RED_TEXTO[red].detalle }),
       );
@@ -140,8 +141,16 @@ const hashInicial = location.hash.slice(1);
 if (VALIDAS.has(hashInicial)) store.set({ vista: hashInicial as Vista });
 montar();
 
+if ('serviceWorker' in navigator) {
+  void navigator.serviceWorker.register('sw.js').catch((error) => console.warn('Cafeto sin caché offline', error));
+}
+
 cargarBase()
-  .then((b) => { base = b; store.set({ cargando: false }); montar(); })
+  .then(async (b) => {
+    await cargarDemo(b).catch((error) => console.warn('Cafeto sin datos ficticios de acopio', error));
+    base = b;
+    store.set({ cargando: false });
+  })
   .catch((e: unknown) => {
     store.set({ cargando: false, error: `No se pudo cargar la base: ${String(e)}` });
   });

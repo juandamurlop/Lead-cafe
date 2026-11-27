@@ -1,11 +1,12 @@
 import { h } from '../lib/dom';
 import { slot } from '../lib/reactive';
-import { boton, callout, card, fila, grid, nota, pill, readout, slider } from '../lib/ui';
+import { boton, callout, card, fila, grid, nota, readout, slider } from '../lib/ui';
 import { cop, entero, horas, mmss, num } from '../lib/fmt';
 import { liquidar } from '../domain/pricing';
 import { RED_TEXTO, store, toast } from '../state';
 import type { EntregaViva, Red } from '../state';
 import type { Base } from '../data/db';
+import { ventanilla as operacionHernan } from './ventanilla';
 
 /** Presupuesto de tiempo por entrega, en segundos. Estimación a cronometrar en campo. */
 const SEG_CUADERNO = 450;
@@ -13,10 +14,10 @@ const SEG_CAFETO_BASE = 190;
 const SEG_MEDIR_HUMEDAD = 45;
 
 const CHECK: Record<Red, { marca: string; clase: string; texto: string }> = {
-  0: { marca: '✓', clase: 'c1', texto: 'guardado en el teléfono · espera el QR o la mula' },
-  1: { marca: '✓✓', clase: 'c2', texto: 'enviado por SMS, un solo mensaje' },
-  2: { marca: '✓✓', clase: 'c2', texto: 'subido en el lote comprimido' },
-  3: { marca: '✓✓', clase: 'c3', texto: 'sincronizado y visible para el comprador' },
+  0: { marca: '○', clase: 'c1', texto: 'escenario sin conectividad' },
+  1: { marca: '○', clase: 'c1', texto: 'escenario de envío por SMS' },
+  2: { marca: '○', clase: 'c1', texto: 'escenario de envío de cola comprimida' },
+  3: { marca: '○', clase: 'c1', texto: 'escenario de envío con WiFi del acopio' },
 };
 
 /** Cola de la jornada, armada con lotes reales de la base. */
@@ -60,7 +61,7 @@ function ventanilla(b: Base): HTMLElement {
     h('div', { class: 'next' },
       h('span', { class: 'next-l', text: 'Siguiente en la fila' }),
       h('strong', { class: 'next-n', text: siguiente.nombre }),
-      h('span', { class: 'next-m', text: `${num(siguiente.kg)} kg · ${siguiente.trazado ? siguiente.sacoId : 'sin QR'}` }),
+      h('span', { class: 'next-m', text: `${num(siguiente.kg)} kg · ${siguiente.trazado ? siguiente.sacoId : 'origen sin verificar'}` }),
     ),
     h('h3', { class: 'h3', text: 'Tiempo acumulado en la ventanilla' }),
     h('div', { class: 'rows' },
@@ -69,7 +70,7 @@ function ventanilla(b: Base): HTMLElement {
       fila('Tiempo devuelto a Hernán', ahorro > 0 ? horas(ahorro) : '0 min', 'proyectado a 120 entregas/día: ~1 h'),
     ),
     nota('Los tiempos con cuaderno son estimación nuestra. El primer trabajo del piloto es cronometrar la ventanilla real durante una semana.'),
-    h('h3', { class: 'h3', text: 'El registro que viajó' }),
+    h('h3', { class: 'h3', text: 'Ejemplo de registro para SMS' }),
     h('pre', { class: 'bytes', text: ultima ? bytesDemo(s.cursorEntrega) : '—' }),
     nota('48 bytes: finca, secuencia, fecha, peso, humedad, delta de GPS y firma. En base32 son 77 caracteres: cabe en un solo SMS de 160.'),
   );
@@ -79,7 +80,7 @@ function liquidacion(b: Base): HTMLElement {
   const s = store.get();
   const q = cola(b);
   const ultima = s.cursorEntrega > 0 ? q[(s.cursorEntrega - 1) % q.length] : null;
-  if (!ultima) return nota('Pulse «Escanear la siguiente tula» para ver el desglose.');
+  if (!ultima) return nota('Simula una entrega para consultar el desglose.');
 
   const liq = liquidar({
     kg: ultima.kg, factor: 94, humedad: ultima.humedad,
@@ -141,30 +142,34 @@ function colaSync(): HTMLElement {
 }
 
 export function vistaAcopio(b: Base): HTMLElement {
-  const escanear = () => {
+  const simularEntrega = () => {
     const st = store.get();
     if (st.loteCerrado) { toast('El lote está cerrado. Reinicie la jornada.', 'warn'); return; }
     const q = cola(b);
     const e = q[st.cursorEntrega % q.length];
     const porMuestreo = e.trazado && st.cursorEntrega % 3 !== 1;
+    const aceptado = e.trazado && e.humedad >= 0.10 && e.humedad <= 0.12;
+    const repetido = st.entregas.some((anterior) => anterior.loteId === e.loteId);
 
     store.set({
       cursorEntrega: st.cursorEntrega + 1,
       segViejo: st.segViejo + SEG_CUADERNO,
       segNuevo: st.segNuevo + SEG_CAFETO_BASE + (porMuestreo ? 0 : SEG_MEDIR_HUMEDAD),
-      entregas: e.trazado ? [...st.entregas, e] : st.entregas,
+      entregas: aceptado && !repetido ? [...st.entregas, e] : st.entregas,
       rechazadas: e.trazado ? st.rechazadas : st.rechazadas + 1,
     });
 
     if (!e.trazado) toast('Entrega sin finca verificada: va a la pila sin trazar.', 'bad');
-    else if (e.humedad > 0.12) toast(`${e.nombre}: humedad ${num(e.humedad * 100)} %. Se aplica descuento.`, 'warn');
+    else if (!aceptado) toast(`${e.nombre}: humedad ${num(e.humedad * 100)} %. Retenido para evaluación.`, 'warn');
+    else if (repetido) toast('Entrega ya incluida en el lote de demostración.', 'warn');
     else toast(`${e.nombre} · ${entero(e.kg)} kg sumados al lote.`, 'ok');
   };
 
   return grid(
-    card('La ventanilla', 'Cada entrega que llega con QR se registra sola. La trazabilidad no es un paso adicional: es consecuencia del escaneo que ya hizo.',
+    operacionHernan(b),
+    card('Simulación de la ventanilla', 'Ejercicio con las fincas ficticias para comparar la atención y estimar la liquidación.',
       h('div', { class: 'btnrow' },
-        boton('⚡ Escanear la siguiente tula', escanear),
+        boton('Simular siguiente entrega', simularEntrega),
         boton('Cerrar el lote', () => {
           if (!store.get().entregas.length) { toast('El lote está vacío.', 'warn'); return; }
           store.set({ loteCerrado: true });
@@ -177,7 +182,7 @@ export function vistaAcopio(b: Base): HTMLElement {
       slot(() => ventanilla(b)),
     ),
 
-    card('Liquidación de la última entrega', 'Con el precio interno de referencia de la FNC del 25 de noviembre de 2026.',
+    card('Liquidación simulada de la última entrega', 'Con el precio interno de referencia de la FNC del 25 de noviembre de 2026.',
       slot(() => liquidacion(b)),
       h('h3', { class: 'h3', text: 'Premio por trazabilidad' }),
       slider({
@@ -189,21 +194,17 @@ export function vistaAcopio(b: Base): HTMLElement {
         'un premio mezclado en el precio no se puede verificar, y la experiencia de las certificaciones sugiere que a menudo no llega abajo.'),
     ),
 
-    card('Lote de acopio del día', 'No hay que separar el café de cada finca. Hay que saber qué predios aportaron.',
+    card('Lote de acopio simulado', 'Ejemplo de un lote abierto con entregas ficticias.',
       slot(loteAbierto),
       callout('Separación física por estatus, no por finca:',
         'el EUDR no permite mezclar café libre de deforestación con café de origen desconocido. Dos pilas, no trescientas.'),
     ),
 
-    card('Cola de sincronización', null,
+    card('Escenarios de conectividad', 'Simulación visual de las opciones de envío.',
       slot(() => h('div', {},
         h('p', { class: 'panel-h', text: RED_TEXTO[store.get().red].detalle }),
         colaSync(),
       )),
-      h('p', { class: 'leyenda' },
-        pill('✓ en el teléfono', 'neutro'), pill('✓✓ en el acopio', 'neutro'), pill('✓✓ lo vio el comprador', 'ok'),
-      ),
-      nota('Es el modelo mental de WhatsApp. Estar sin señal nunca se muestra como error: es el estado normal de la vereda.'),
     ),
   );
 }
