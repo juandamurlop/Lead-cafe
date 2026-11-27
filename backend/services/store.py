@@ -16,6 +16,18 @@ class PostgresStore:
     def _connect(self) -> psycopg.Connection[Any]:
         return psycopg.connect(self._database_url, row_factory=dict_row)
 
+    def dashboard_summary(self) -> dict[str, int]:
+        """Return aggregate counts without exposing individual records."""
+        with self._connect() as conn:
+            row = conn.execute("""
+                SELECT
+                    (SELECT COUNT(*) FROM farms) AS farms,
+                    (SELECT COUNT(*) FROM lots) AS lots,
+                    (SELECT COUNT(*) FROM epcis_events) AS events
+            """).fetchone()
+            assert row is not None
+            return row
+
     def mark_message_processed(self, source_message_id: str, wa_id: str) -> bool:
         """Record message ID atomically. Returns True if new, False if duplicate."""
         sql = """

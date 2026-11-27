@@ -11,3 +11,7 @@ backend/local.settings.json
 
 # Bicep / Azure local state
 .azure/
+
+# Cafeto dashboard
+/dashboard/node_modules/
+/dashboard/app.js

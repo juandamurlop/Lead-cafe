@@ -1,0 +1,13 @@
+{
+  "name": "cafeto-dashboard",
+  "private": true,
+  "scripts": {
+    "build": "esbuild src/main.ts --bundle --minify --outfile=app.js",
+    "dev": "esbuild src/main.ts --bundle --outfile=app.js --servedir=. --serve=127.0.0.1:8000",
+    "check": "tsc --noEmit --target ES2022 --module ESNext --moduleResolution bundler src/main.ts"
+  },
+  "devDependencies": {
+    "esbuild": "0.28.2",
+    "typescript": "5.1.6"
+  }
+}
