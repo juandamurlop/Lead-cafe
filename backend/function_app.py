@@ -7,7 +7,7 @@ import logging
 import os
 
 import azure.functions as func
-from azure.storage.queue import QueueClient
+from azure.storage.queue import QueueClient, TextBase64EncodePolicy
 
 from api.lots import handle_get_lot, handle_list_lots, to_json
 from handlers.registration import handle_registration
@@ -83,8 +83,10 @@ def get_lot(req: func.HttpRequest) -> func.HttpResponse:
 def _get_queue_client() -> QueueClient:
     conn_str = os.environ["AzureWebJobsStorage"]
     queue_name = os.environ.get("WHATSAPP_QUEUE_NAME", "whatsapp-inbound")
-    client = QueueClient.from_connection_string(conn_str, queue_name)
-    return client
+    # The Functions queue trigger expects Base64 messages by default.
+    return QueueClient.from_connection_string(
+        conn_str, queue_name, message_encode_policy=TextBase64EncodePolicy()
+    )
 
 
 @app.route(route="webhook", methods=["GET", "POST"])
