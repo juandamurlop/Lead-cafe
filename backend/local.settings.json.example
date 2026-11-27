@@ -1,0 +1,17 @@
+{
+  "IsEncrypted": false,
+  "Values": {
+    "AzureWebJobsStorage": "UseDevelopmentStorage=true",
+    "FUNCTIONS_WORKER_RUNTIME": "python",
+    "WHATSAPP_QUEUE_NAME": "whatsapp-inbound",
+    "EVIDENCE_CONTAINER_NAME": "compliance-evidence",
+    "DATABASE_URL": "postgresql://loteadmin:changeme@localhost:5432/lote_claro",
+    "WHATSAPP_VERIFY_TOKEN": "dev-verify-token",
+    "META_APP_SECRET": "dev-app-secret",
+    "WHATSAPP_ACCESS_TOKEN": "EAAB...",
+    "WHATSAPP_PHONE_NUMBER_ID": "1234567890",
+    "FOUNDRY_ENDPOINT": "https://your-foundry-resource.services.ai.azure.com",
+    "FOUNDRY_API_KEY": "your-foundry-key",
+    "FOUNDRY_MODEL": "gpt-4o-transcribe"
+  }
+}

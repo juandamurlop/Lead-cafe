@@ -1,0 +1,253 @@
+targetScope = 'resourceGroup'
+
+@description('Project slug used for naming Azure resources.')
+param projectName string
+
+@description('Deployment environment.')
+param environment string
+
+@description('Azure region.')
+param location string
+
+@description('PostgreSQL administrator username.')
+param pgAdminUser string
+
+@secure()
+@description('PostgreSQL administrator password.')
+param pgAdminPassword string
+
+@secure()
+param whatsappVerifyToken string = ''
+
+@secure()
+param metaAppSecret string = ''
+
+@secure()
+param whatsappAccessToken string = ''
+
+param whatsappPhoneNumberId string = ''
+param foundryEndpoint string = ''
+
+@secure()
+param foundryApiKey string = ''
+
+param foundryModel string = 'gpt-4o-transcribe'
+
+var uniqueSuffix = uniqueString(resourceGroup().id)
+var storageName = toLower('st${take(projectName, 8)}${take(uniqueSuffix, 10)}')
+var pgServerName = '${projectName}-${environment}-pg-${take(uniqueSuffix, 6)}'
+var pgDatabaseName = 'lote_claro'
+var logAnalyticsName = '${projectName}-${environment}-law'
+var appInsightsName = '${projectName}-${environment}-ai'
+var planName = '${projectName}-${environment}-plan'
+var functionAppName = '${projectName}-${environment}-func-${take(uniqueSuffix, 6)}'
+var queueName = 'whatsapp-inbound'
+var evidenceContainerName = 'compliance-evidence'
+
+resource storage 'Microsoft.Storage/storageAccounts@2023-05-01' = {
+  name: storageName
+  location: location
+  sku: {
+    name: 'Standard_LRS'
+  }
+  kind: 'StorageV2'
+  properties: {
+    minimumTlsVersion: 'TLS1_2'
+    supportsHttpsTrafficOnly: true
+    allowBlobPublicAccess: false
+  }
+}
+
+resource queueService 'Microsoft.Storage/storageAccounts/queueServices@2023-05-01' = {
+  parent: storage
+  name: 'default'
+}
+
+resource inboundQueue 'Microsoft.Storage/storageAccounts/queueServices/queues@2023-05-01' = {
+  parent: queueService
+  name: queueName
+}
+
+resource blobService 'Microsoft.Storage/storageAccounts/blobServices@2023-05-01' = {
+  parent: storage
+  name: 'default'
+}
+
+resource evidenceContainer 'Microsoft.Storage/storageAccounts/blobServices/containers@2023-05-01' = {
+  parent: blobService
+  name: evidenceContainerName
+  properties: {
+    publicAccess: 'None'
+  }
+}
+
+resource logAnalytics 'Microsoft.OperationalInsights/workspaces@2023-09-01' = {
+  name: logAnalyticsName
+  location: location
+  properties: {
+    sku: {
+      name: 'PerGB2018'
+    }
+    retentionInDays: 30
+  }
+}
+
+resource appInsights 'Microsoft.Insights/components@2020-02-02' = {
+  name: appInsightsName
+  location: location
+  kind: 'web'
+  properties: {
+    Application_Type: 'web'
+    WorkspaceResourceId: logAnalytics.id
+  }
+}
+
+resource pgServer 'Microsoft.DBforPostgreSQL/flexibleServers@2023-12-01-preview' = {
+  name: pgServerName
+  location: location
+  sku: {
+    name: 'Standard_B1ms'
+    tier: 'Burstable'
+  }
+  properties: {
+    version: '16'
+    administratorLogin: pgAdminUser
+    administratorLoginPassword: pgAdminPassword
+    storage: {
+      storageSizeGB: 32
+    }
+    backup: {
+      backupRetentionDays: 7
+      geoRedundantBackup: 'Disabled'
+    }
+    highAvailability: {
+      mode: 'Disabled'
+    }
+  }
+}
+
+resource pgPostgisExtension 'Microsoft.DBforPostgreSQL/flexibleServers/configurations@2023-12-01-preview' = {
+  parent: pgServer
+  name: 'azure.extensions'
+  properties: {
+    value: 'POSTGIS'
+    source: 'user-override'
+  }
+}
+
+resource pgAllowAzure 'Microsoft.DBforPostgreSQL/flexibleServers/firewallRules@2023-12-01-preview' = {
+  parent: pgServer
+  name: 'AllowAllAzureServicesAndResourcesWithinAzureIps'
+  properties: {
+    startIpAddress: '0.0.0.0'
+    endIpAddress: '0.0.0.0'
+  }
+}
+
+resource pgDatabase 'Microsoft.DBforPostgreSQL/flexibleServers/databases@2023-12-01-preview' = {
+  parent: pgServer
+  name: pgDatabaseName
+  properties: {
+    charset: 'UTF8'
+    collation: 'en_US.utf8'
+  }
+}
+
+resource hostingPlan 'Microsoft.Web/serverfarms@2023-12-01' = {
+  name: planName
+  location: location
+  kind: 'functionapp'
+  sku: {
+    name: 'Y1'
+    tier: 'Dynamic'
+  }
+  properties: {
+    reserved: true
+  }
+}
+
+var storageConnectionString = 'DefaultEndpointsProtocol=https;AccountName=${storage.name};EndpointSuffix=${environment().suffixes.storage};AccountKey=${storage.listKeys().keys[0].value}'
+var databaseUrl = 'postgresql://${pgAdminUser}:${uriComponent(pgAdminPassword)}@${pgServer.properties.fullyQualifiedDomainName}:5432/${pgDatabaseName}?sslmode=require'
+
+resource functionApp 'Microsoft.Web/sites@2023-12-01' = {
+  name: functionAppName
+  location: location
+  kind: 'functionapp,linux'
+  properties: {
+    serverFarmId: hostingPlan.id
+    httpsOnly: true
+    siteConfig: {
+      linuxFxVersion: 'PYTHON|3.11'
+      pythonVersion: '3.11'
+      appSettings: [
+        {
+          name: 'AzureWebJobsStorage'
+          value: storageConnectionString
+        }
+        {
+          name: 'FUNCTIONS_EXTENSION_VERSION'
+          value: '~4'
+        }
+        {
+          name: 'FUNCTIONS_WORKER_RUNTIME'
+          value: 'python'
+        }
+        {
+          name: 'APPLICATIONINSIGHTS_CONNECTION_STRING'
+          value: appInsights.properties.ConnectionString
+        }
+        {
+          name: 'WHATSAPP_QUEUE_NAME'
+          value: queueName
+        }
+        {
+          name: 'EVIDENCE_CONTAINER_NAME'
+          value: evidenceContainerName
+        }
+        {
+          name: 'DATABASE_URL'
+          value: databaseUrl
+        }
+        {
+          name: 'WHATSAPP_VERIFY_TOKEN'
+          value: whatsappVerifyToken
+        }
+        {
+          name: 'META_APP_SECRET'
+          value: metaAppSecret
+        }
+        {
+          name: 'WHATSAPP_ACCESS_TOKEN'
+          value: whatsappAccessToken
+        }
+        {
+          name: 'WHATSAPP_PHONE_NUMBER_ID'
+          value: whatsappPhoneNumberId
+        }
+        {
+          name: 'FOUNDRY_ENDPOINT'
+          value: foundryEndpoint
+        }
+        {
+          name: 'FOUNDRY_API_KEY'
+          value: foundryApiKey
+        }
+        {
+          name: 'FOUNDRY_MODEL'
+          value: foundryModel
+        }
+      ]
+    }
+  }
+  dependsOn: [
+    pgDatabase
+    pgPostgisExtension
+    inboundQueue
+    evidenceContainer
+  ]
+}
+
+output functionAppName string = functionApp.name
+output functionAppHostName string = functionApp.properties.defaultHostName
+output postgresHost string = pgServer.properties.fullyQualifiedDomainName
+output storageAccountName string = storage.name
